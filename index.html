@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistem Rekod Markah Core Abilities JPK Tahap 1</title>
+  <title>Sistem Rekod Markah Core Abilities JPK Tahap 3</title>
   
   <!-- Tailwind CSS & Google Fonts -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -76,10 +76,10 @@
       return {
         // Konfigurasi Lalai Sistem Rekod Markah
         DEFAULT_CONFIG: {
-          namaSistem: "SISTEM REKOD MARKAH CORE ABILITIES TAHAP 1",
+          namaSistem: "SISTEM REKOD MARKAH CORE ABILITIES TAHAP 3",
           pusatBertauliah: "K 05037, KOLEJ VOKASIONAL LIKAS",
-          kohort: "2024 / 2025",
-          tahap: "Tahap 1",
+          kohort: "2025 / 2026",
+          tahap: "Tahap 3",
           temaWarna: "blue",
           gayaTulisan: "sans",
           adminPassword: "admin123",
@@ -91,7 +91,7 @@
           ],
           slipTajuk: "BORANG PENILAIAN PENGETAHUAN NCS - CORE ABILITIES",
           slipLabelTandatangan1: "TANDATANGAN TENAGA PENGAJAR",
-          slipLabelTandatangan2: "PENGESAHAN PENYELARAS TAHAP 1",
+          slipLabelTandatangan2: "PENGESAHAN PENYELARAS TAHAP 3",
           slipLabelTandatangan2Jawatan: "KETUA JABATAN / PENYELARAS JPK",
           slipNotaKaki: "* Pelatih hendaklah mencapai sekurang-kurangnya 12 markah minimum bagi setiap abilities.",
           isInputActive: true
@@ -1231,7 +1231,7 @@
     <div class="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-6 border border-slate-200">
       <div class="flex justify-between items-center border-b pb-3">
         <h3 class="text-sm font-extrabold text-slate-800 uppercase flex items-center gap-2">
-          <i data-lucide="file-text" class="text-blue-600"></i> PREVIEW SLIP KEPUTUSAN (Lampiran 2a JPK/CA/PT-T1)
+          <i data-lucide="file-text" class="text-blue-600"></i> PREVIEW SLIP KEPUTUSAN (Lampiran 2a JPK/CA/PT-T3)
         </h3>
         <button @click="showSlipModal = false" class="text-slate-400 hover:text-slate-600">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -1253,7 +1253,7 @@
             <h2 class="text-[15px] font-extrabold uppercase tracking-tight text-black" x-text="appConfig.slipTajuk"></h2>
             <p class="text-[11px] text-gray-700 italic mt-0.5">(Borang ini perlu diisi oleh PP pada setiap kali menjalankan Penilaian Pengetahuan)</p>
             <div class="mt-4">
-              <span class="text-[13px] font-extrabold uppercase border-b-2 border-black pb-0.5 tracking-widest text-black">CORE ABILITIES – TAHAP 1</span>
+              <span class="text-[13px] font-extrabold uppercase border-b-2 border-black pb-0.5 tracking-widest text-black">CORE ABILITIES – TAHAP 3</span>
             </div>
           </div>
 
@@ -1369,7 +1369,7 @@
           <h2 class="text-[15px] font-extrabold uppercase tracking-tight text-black" x-text="appConfig.slipTajuk"></h2>
           <p class="text-[11px] text-gray-700 italic mt-0.5">(Borang ini perlu diisi oleh PP pada setiap kali menjalankan Penilaian Pengetahuan)</p>
           <div class="mt-4">
-            <span class="text-[13px] font-extrabold uppercase border-b-2 border-black pb-0.5 tracking-widest text-black">CORE ABILITIES – TAHAP 1</span>
+            <span class="text-[13px] font-extrabold uppercase border-b-2 border-black pb-0.5 tracking-widest text-black">CORE ABILITIES – TAHAP 3</span>
           </div>
         </div>
 
@@ -1458,7 +1458,7 @@
       <div class="space-y-6">
         <div class="text-center space-y-1 mb-6 border-b-2 border-slate-900 pb-4">
           <h2 class="text-lg font-extrabold uppercase" x-text="appConfig.pusatBertauliah"></h2>
-          <h3 class="text-xs font-bold text-slate-600">SENARAI REKOD MARKAH PENILAIAN CORE ABILITIES TAHAP 1</h3>
+          <h3 class="text-xs font-bold text-slate-600">SENARAI REKOD MARKAH PENILAIAN CORE ABILITIES TAHAP 3</h3>
           <p class="text-[10px] font-semibold" x-text="`PROGRAM: ${getActiveProgramDetails().code} - ${getActiveProgramDetails().name} • KOHORT: ${appConfig.kohort}`"></p>
         </div>
 
@@ -1642,9 +1642,9 @@
     <div x-show="activeTab === 'dashboard'" class="space-y-6">
       <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 class="text-xl font-extrabold">Selamat Datang, Tenaga Pengajar Core Abilities</h2>
+          <h2 class="text-xl font-extrabold">Selamat Datang, Penyelaras dan Tenaga Pengajar Core Abilities</h2>
           <p class="text-xs text-slate-400 mt-1 max-w-2xl">
-            Uruskan data pelatih, masukkan markah JPK Core Abilities Tahap 1, dan jana slip keputusan yang bersedia untuk dicetak.
+            Uruskan data pelatih, masukkan markah JPK Core Abilities Tahap 3, dan jana slip keputusan yang bersedia untuk dicetak.
           </p>
           <div class="mt-4 flex flex-wrap gap-2">
             <span class="text-[11px] bg-slate-800 px-3 py-1 rounded-md text-slate-300">
@@ -3087,7 +3087,7 @@ function savePrograms(programs) {
                 <input 
                   type="text" 
                   x-model="tempConfig.slipLabelTandatangan2"
-                  placeholder="PENGESAHAN PENYELARAS TAHAP 1"
+                  placeholder="PENGESAHAN PENYELARAS TAHAP 3"
                   class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-800"
                 />
               </div>
