@@ -1,0 +1,3509 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Rekod Markah Core Abilities JPK Tahap 1</title>
+  
+  <!-- Tailwind CSS & Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;500;600;700;800&family=JetBrains+Mono:wght=400;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .font-mono-custom {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    /* Penebalan garisan jadual secara konsisten pada skrin */
+    .table-thick-borders, 
+    .table-thick-borders th, 
+    .table-thick-borders td {
+      border: 1.5px solid #1e293b !important; /* warna slate pekat */
+    }
+
+    /* Sembunyikan elemen UI semasa mencetak slip keputusan atau jadual markah */
+    .print-only {
+      display: none;
+    }
+    @media print {
+      body {
+        background-color: white !important;
+        color: black !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-only {
+        display: block !important;
+      }
+      .print-container {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+      }
+      /* Penebalan garisan hitam penuh semasa cetakan fizikal */
+      .table-thick-borders, 
+      .table-thick-borders th, 
+      .table-thick-borders td {
+        border: 2px solid #000000 !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 1.5cm;
+      }
+    }
+  </style>
+
+  <script>
+
+    // ════════════════════════════════════════════════════════════════
+    // ⚙️  TANAM URL GOOGLE APPS SCRIPT DI SINI
+    //     Tukar kepada URL Web App anda selepas deploy GAS v3.0
+    // ════════════════════════════════════════════════════════════════
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxS_Z9kcdyuW_GKLdW2vpaD803R2zP8af1kD9jMGoqXhDXaW2ByxH0OPB3m0xX-0-86/exec";
+    // Contoh: "https://script.google.com/macros/s/AKfycb.../exec"
+    // ════════════════════════════════════════════════════════════════
+
+    function systemState() {
+      return {
+        // Konfigurasi Lalai Sistem Rekod Markah
+        DEFAULT_CONFIG: {
+          namaSistem: "SISTEM REKOD MARKAH CORE ABILITIES TAHAP 1",
+          pusatBertauliah: "K 05037, KOLEJ VOKASIONAL LIKAS",
+          kohort: "2024 / 2025",
+          tahap: "Tahap 1",
+          temaWarna: "blue",
+          gayaTulisan: "sans",
+          adminPassword: "admin123",
+          abilities: [
+            { id: "ca01", code: "CA01", name: "ASAS KOMUNIKASI PEKERJAAN", max: 20, minPass: 12 },
+            { id: "ca02", code: "CA02", name: "KEMAHIRAN TINGKAH LAKU PERSONAL", max: 20, minPass: 12 },
+            { id: "ca03", code: "CA03", name: "KESEDARAN ETIKA DI TEMPAT KERJA", max: 20, minPass: 12 },
+            { id: "ca04", code: "CA04", name: "KESEDARAN, KESIHATAN, KESELAMATAN DAN ALAM SEKITAR", max: 20, minPass: 12 }
+          ],
+          slipTajuk: "BORANG PENILAIAN PENGETAHUAN NCS - CORE ABILITIES",
+          slipLabelTandatangan1: "TANDATANGAN TENAGA PENGAJAR",
+          slipLabelTandatangan2: "PENGESAHAN PENYELARAS TAHAP 1",
+          slipLabelTandatangan2Jawatan: "KETUA JABATAN / PENYELARAS JPK",
+          slipNotaKaki: "* Pelatih hendaklah mencapai sekurang-kurangnya 12 markah minimum bagi setiap abilities.",
+          isInputActive: true
+        },
+
+        DEFAULT_PROGRAMS: [
+          { id: "prg1", code: "WTP", name: "TEKNOLOGI PEMBINAAN (BUILDING TECHNOLOGY)" },
+          { id: "prg2", code: "WTE", name: "TEKNOLOGI ELEKTRIK (ELECTRICAL TECHNOLOGY)" },
+          { id: "prg3", code: "WTK", name: "TEKNOLOGI KIMPALAN (WELDING TECHNOLOGY)" },
+          { id: "prg4", code: "MTA", name: "TEKNOLOGI AUTOMOTIF (AUTOMOTIVE TECHNOLOGY)" },
+          { id: "prg5", code: "WET", name: "TEKNOLOGI ELEKTRONIK (ELECTRONIC TECHNOLOGY)" },
+          { id: "prg6", code: "MPI", name: "TEKNOLOGI PEMESINAN INDUSTRI (INDUSTRIAL MACHINING)" },
+          { id: "prg7", code: "MPP", name: "TEKNOLOGI PENYAMAN UDARA & PENYEJUKAN (HVAC)" },
+          { id: "prg8", code: "KSK", name: "TEKNOLOGI SISTEM KOMPUTER & RANGKAIAN" }
+        ],
+
+        REAL_SAMPLES_PELATIH: [
+          { id: "s1", programId: "prg1", nama: "WARREN YOED LANGAD GITOM", angkaGiliran: "K05037/24/001", ic: "81217121047", scores: { ca01: 19, ca02: 15.79, ca03: 19, ca04: 12 }, tarikhCA04: "2024-11-20", jumlah: 65.79, peratus: 82.24, gred: "LULUS", keputusan: "LULUS", statusAktif: "AKTIF", tenagaPengajar: "NURUL (TP)" },
+          { id: "s2", programId: "prg1", nama: "TARONCE", angkaGiliran: "K05037/24/002", ic: "80921120991", scores: { ca01: 17, ca02: 17.89, ca03: 18, ca04: 11 }, tarikhCA04: "2024-11-20", jumlah: 63.89, peratus: 79.86, gred: "LULUS", keputusan: "GAGAL", statusAktif: "AKTIF", tenagaPengajar: "NURUL (TP)" },
+          { id: "s3", programId: "prg1", nama: "SAIYIDATUL MASNAH BINTI ABDUL JAMIL", angkaGiliran: "K05037/24/003", ic: "80509120180", scores: { ca01: 19, ca02: 14.74, ca03: 17, ca04: 20 }, tarikhCA04: "2024-11-20", jumlah: 70.74, peratus: 88.43, gred: "LULUS", keputusan: "LULUS", statusAktif: "AKTIF", tenagaPengajar: "NURUL (TP)" }
+        ],
+
+        // ── Keadaan UI ─────────────────────────────────────────────
+        appConfig: {},
+        programsList: [],
+        pelatihList: [],
+        tenagaPengajar: '',
+        activeTab: 'dashboard',
+        selectedProgramId: 'prg1',
+        searchQuery: '',
+        filterKeputusan: 'SEMUA',
+        filterStatusAktif: 'AKTIF',
+        activePrintType: 'slip',
+
+        // ── Status loading & sync ───────────────────────────────────
+        isLoading: true,
+        loadingMsg: 'Menghubungi Google Sheets...',
+        isSyncing: false,
+        syncError: false,
+        gasConfigured: GAS_URL !== "GANTIKAN_DENGAN_URL_APPS_SCRIPT_ANDA" && GAS_URL.trim() !== "",
+
+        // ── Borang ─────────────────────────────────────────────────
+        editingId: null,
+        formNama: '',
+        formAngkaGiliran: '',
+        formIc: '',
+        formScores: {},
+        formTarikhCA04: '',
+        formMethod: 'new',
+        selectedTraineeIdToScore: '',
+
+        // ── Modal CSV tarikh ────────────────────────────────────────
+        showCsvDateModal: false,
+        csvDateCa04: '',
+        tempCsvFile: null,
+
+        // ── Admin ───────────────────────────────────────────────────
+        tempConfig: {},
+        tempPrograms: [],
+        newProgramCode: '',
+        newProgramName: '',
+        newAbilityCode: '',
+        newAbilityName: '',
+        newAbilityMax: 20,
+        newAbilityMinPass: 12,
+        adminCsvMod: 'daftar',
+        adminCsvPengajar: '',
+
+        adminPasswordInput: '',
+        isAdminUnlocked: false,
+        adminActivityLogs: [],
+
+        // ── Modal & Notif ───────────────────────────────────────────
+        notification: false,
+        notificationText: '',
+        notificationType: 'success',
+        showConfirmModal: false,
+        confirmModalTitle: '',
+        confirmModalMessage: '',
+        confirmAction: null,
+        showAdminAuthModal: false,
+
+        // ── Cetak ───────────────────────────────────────────────────
+        selectedPelatihForSlip: null,
+        showSlipModal: false,
+
+        // ── Warna ───────────────────────────────────────────────────
+        colorOptions: [
+          { id: 'blue',    name: 'KV Blue',    color: 'bg-blue-600' },
+          { id: 'indigo',  name: 'Indigo',     color: 'bg-indigo-600' },
+          { id: 'slate',   name: 'Dark Slate', color: 'bg-slate-800' },
+          { id: 'emerald', name: 'Emerald',    color: 'bg-emerald-600' },
+          { id: 'rose',    name: 'Deep Rose',  color: 'bg-rose-600' },
+          { id: 'amber',   name: 'Amber',      color: 'bg-amber-500' }
+        ],
+
+        themeClasses: {
+          blue:    { bg: 'bg-blue-600',    hover: 'hover:bg-blue-700',    text: 'text-blue-600',    border: 'border-blue-200',    bgLight: 'bg-blue-50/70',    accent: 'bg-blue-500' },
+          indigo:  { bg: 'bg-indigo-600',  hover: 'hover:bg-indigo-700',  text: 'text-indigo-600',  border: 'border-indigo-200',  bgLight: 'bg-indigo-50/70',  accent: 'bg-indigo-500' },
+          slate:   { bg: 'bg-slate-800',   hover: 'hover:bg-slate-900',   text: 'text-slate-800',   border: 'border-slate-300',   bgLight: 'bg-slate-100/70',  accent: 'bg-slate-700' },
+          emerald: { bg: 'bg-emerald-600', hover: 'hover:bg-emerald-700', text: 'text-emerald-600', border: 'border-emerald-200', bgLight: 'bg-emerald-50/70', accent: 'bg-emerald-500' },
+          rose:    { bg: 'bg-rose-600',    hover: 'hover:bg-rose-700',    text: 'text-rose-600',    border: 'border-rose-200',    bgLight: 'bg-rose-50/70',    accent: 'bg-rose-500' },
+          amber:   { bg: 'bg-amber-500',   hover: 'hover:bg-amber-600',   text: 'text-amber-600',   border: 'border-amber-200',   bgLight: 'bg-amber-50/70',   accent: 'bg-amber-500' }
+        },
+
+        // ════════════════════════════════════════════════════════════
+        // INIT — muat dari GAS, jika gagal fallback ke DEFAULT
+        // ════════════════════════════════════════════════════════════
+        async initSystem() {
+          this.isLoading = true;
+          this.syncError = false;
+
+          const defaultConfig   = JSON.parse(JSON.stringify(this.DEFAULT_CONFIG));
+          const defaultPrograms = JSON.parse(JSON.stringify(this.DEFAULT_PROGRAMS));
+
+          if (!this.gasConfigured) {
+            // GAS URL belum dikonfigurasi — guna data contoh setempat
+            this.appConfig     = defaultConfig;
+            this.programsList  = defaultPrograms;
+            this.pelatihList   = JSON.parse(JSON.stringify(this.REAL_SAMPLES_PELATIH));
+            this.loadingMsg    = 'URL Apps Script belum dikonfigurasi.';
+            this.syncError     = true;
+            this.isLoading     = false;
+            this.tempConfig    = JSON.parse(JSON.stringify(this.appConfig));
+            this.tempPrograms  = JSON.parse(JSON.stringify(this.programsList));
+            this.tenagaPengajar = localStorage.getItem('ca_instructor_html') || '';
+            this.adminActivityLogs = JSON.parse(localStorage.getItem('ca_admin_logs') || '[]');
+            this.clearForm();
+            this.refreshIcons();
+            return;
+          }
+
+          try {
+            this.loadingMsg = 'Menghubungi Google Sheets...';
+            const res = await fetch(GAS_URL, { method: 'GET', mode: 'cors' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            if (data.status !== 'success') throw new Error(data.message || 'Respons GAS tidak sah.');
+
+            // ── Muat config + programs dari GAS (jika ada) ──────────
+            if (data.config) {
+              this.appConfig = Object.assign(defaultConfig, data.config);
+            } else {
+              this.appConfig = defaultConfig;
+            }
+
+            if (data.programs && data.programs.length > 0) {
+              this.programsList = data.programs;
+            } else {
+              this.programsList = defaultPrograms;
+            }
+
+            // ── Muat abilities dari GAS (jika ada) ──────────────────
+            if (data.abilities && data.abilities.length > 0) {
+              this.appConfig.abilities = data.abilities;
+            }
+
+            // ── Muat senarai pelatih ─────────────────────────────────
+            this.pelatihList = Array.isArray(data.pelatih) ? data.pelatih : [];
+
+            // Migrasi / kira semula jumlah
+            this.pelatihList = this.pelatihList.map(p => this._recalcRecord(p));
+
+            this.syncError = false;
+            this.addActivityLog('MUAT SISTEM', `${this.pelatihList.length} rekod & ${this.appConfig.abilities.length} CA dimuat dari Google Sheets.`);
+
+          } catch (err) {
+            console.error('[GAS] Init gagal:', err);
+            this.syncError   = true;
+            this.appConfig   = defaultConfig;
+            this.programsList = defaultPrograms;
+            this.pelatihList = JSON.parse(JSON.stringify(this.REAL_SAMPLES_PELATIH));
+            this.triggerNotice(`Gagal menghubungi Google Sheets: ${err.message}. Data contoh dipaparkan.`, 'error');
+          }
+
+          this.tempConfig   = JSON.parse(JSON.stringify(this.appConfig));
+          this.tempPrograms = JSON.parse(JSON.stringify(this.programsList));
+          this.tenagaPengajar    = localStorage.getItem('ca_instructor_html') || '';
+          this.adminActivityLogs = JSON.parse(localStorage.getItem('ca_admin_logs') || '[]');
+          this.isLoading = false;
+          this.clearForm();
+          this.refreshIcons();
+        },
+
+        // ════════════════════════════════════════════════════════════
+        // PUSH — Hantar semua data ke GAS (gantikan keseluruhan sheet)
+        // ════════════════════════════════════════════════════════════
+        async _pushToGAS() {
+          if (!this.gasConfigured) return;
+          this.isSyncing = true;
+          try {
+            const payload = {
+              pelatih  : this.pelatihList,
+              abilities: this.appConfig.abilities,
+              config   : (() => {
+                const c = JSON.parse(JSON.stringify(this.appConfig));
+                delete c.abilities; // abilities dihantar berasingan
+                return c;
+              })(),
+              programs : this.programsList
+            };
+            await fetch(GAS_URL, {
+              method : 'POST',
+              mode   : 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body   : JSON.stringify(payload)
+            });
+          } catch (err) {
+            console.error('[GAS] Push gagal:', err);
+            this.triggerNotice('Penyimpanan ke Google Sheets gagal. Semak sambungan.', 'error');
+          } finally {
+            this.isSyncing = false;
+          }
+        },
+
+        // Kira semula satu rekod pelatih
+        _recalcRecord(p) {
+          let sumScores = 0, sumMax = 0, isLulus = true;
+          this.appConfig.abilities.forEach(ab => {
+            const s = parseFloat(p.scores[ab.id]) || 0;
+            sumScores += s;
+            sumMax    += ab.max;
+            if (s < ab.minPass) isLulus = false;
+          });
+          const pct    = sumMax > 0 ? parseFloat(((sumScores / sumMax) * 100).toFixed(2)) : 0;
+          const status = isLulus ? 'LULUS' : 'GAGAL';
+          return { ...p, jumlah: parseFloat(sumScores.toFixed(2)), peratus: pct, keputusan: status, gred: this.getGred(pct, status) };
+        },
+
+        // ════════════════════════════════════════════════════════════
+        // UTILITI
+        // ════════════════════════════════════════════════════════════
+        formatDate(dateStr) {
+          if (!dateStr) return '';
+          const parts = dateStr.split('-');
+          return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
+        },
+
+        refreshIcons() {
+          setTimeout(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); }, 100);
+        },
+
+        saveInstructor() {
+          localStorage.setItem('ca_instructor_html', this.tenagaPengajar);
+        },
+
+        triggerNotice(msg, type = 'success') {
+          this.notificationText = msg;
+          this.notificationType = type;
+          this.notification = true;
+          setTimeout(() => this.notification = false, 4000);
+        },
+
+        getGred(peratus, keputusan) {
+          return peratus < 60 ? 'GAGAL' : 'LULUS';
+        },
+
+        getModuleScore(ab) { return parseFloat(this.formScores[ab.id]) || 0; },
+
+        calculateModulePercentage(ab) {
+          return ab.max > 0 ? ((this.getModuleScore(ab) / ab.max) * 100).toFixed(1) : '0.0';
+        },
+
+        calculateLiveTotals() {
+          let sumScores = 0, sumMax = 0, isLulus = true;
+          if (this.appConfig && this.appConfig.abilities) {
+            this.appConfig.abilities.forEach(ab => {
+              const s = this.getModuleScore(ab);
+              sumScores += s; sumMax += ab.max;
+              if (s < ab.minPass) isLulus = false;
+            });
+          }
+          const pct = sumMax > 0 ? parseFloat(((sumScores / sumMax) * 100).toFixed(2)) : 0;
+          const status = isLulus ? 'LULUS' : 'GAGAL';
+          return { jumlah: parseFloat(sumScores.toFixed(2)), maxMaksimum: sumMax, peratus: pct, keputusan: status, gred: this.getGred(pct, status) };
+        },
+
+        clearForm() {
+          this.formNama = ''; this.formAngkaGiliran = ''; this.formIc = '';
+          this.editingId = null; this.selectedTraineeIdToScore = '';
+          this.formScores = {}; this.formTarikhCA04 = '';
+          if (this.appConfig && this.appConfig.abilities) {
+            this.appConfig.abilities.forEach(ab => { this.formScores[ab.id] = ab.minPass; });
+          }
+        },
+
+        setFormMethod(method) { this.formMethod = method; this.clearForm(); },
+
+        loadTraineeToScore(id) {
+          if (!id) { this.clearForm(); return; }
+          const p = this.pelatihList.find(x => x.id === id);
+          if (p) {
+            this.formNama = p.nama; this.formIc = p.ic;
+            this.formAngkaGiliran = p.angkaGiliran || '';
+            this.formTarikhCA04 = p.tarikhCA04 || '';
+            this.appConfig.abilities.forEach(ab => { this.formScores[ab.id] = p.scores[ab.id] || 0; });
+            this.editingId = p.id;
+          }
+        },
+
+        // ════════════════════════════════════════════════════════════
+        // SIMPAN MARKAH → terus ke GAS
+        // ════════════════════════════════════════════════════════════
+        async saveScoreForm() {
+          if (!this.appConfig.isInputActive) {
+            this.triggerNotice("Penyimpanan disekat. Modul kemasukan markah dinyahaktifkan oleh Admin!", "error"); return;
+          }
+          if (!this.tenagaPengajar.trim()) {
+            this.triggerNotice("Nama Tenaga Pengajar wajib diisi!", "error"); return;
+          }
+          if (!this.formTarikhCA04) {
+            this.triggerNotice(`Wajib masukkan Tarikh Penilaian ${this.appConfig.abilities[this.appConfig.abilities.length-1].code}!`, "error"); return;
+          }
+
+          const live = this.calculateLiveTotals();
+          const scoresToSave = {};
+          this.appConfig.abilities.forEach(ab => { scoresToSave[ab.id] = this.getModuleScore(ab); });
+
+          const existing = this.editingId ? this.pelatihList.find(x => x.id === this.editingId) : null;
+          const record = {
+            id: this.editingId || `ID_${Date.now()}`,
+            programId: this.selectedProgramId,
+            nama: this.formNama.toUpperCase().trim(),
+            angkaGiliran: this.formAngkaGiliran.toUpperCase().trim(),
+            ic: this.formIc.replace(/[^0-9]/g, '').trim(),
+            scores: scoresToSave,
+            tarikhCA04: this.formTarikhCA04,
+            jumlah: live.jumlah,
+            peratus: live.peratus,
+            keputusan: live.keputusan,
+            gred: live.gred,
+            statusAktif: existing ? (existing.statusAktif || 'AKTIF') : 'AKTIF',
+            tenagaPengajar: this.tenagaPengajar.toUpperCase().trim()
+          };
+
+          if (this.editingId) {
+            this.pelatihList = this.pelatihList.map(p => p.id === this.editingId ? record : p);
+            this.triggerNotice(`Rekod ${record.nama} dikemaskini. Menyimpan ke Sheets...`);
+          } else {
+            this.pelatihList = [record, ...this.pelatihList];
+            this.triggerNotice(`Rekod ${record.nama} ditambah. Menyimpan ke Sheets...`);
+          }
+
+          this.clearForm();
+          await this._pushToGAS();
+          this.triggerNotice(`Berjaya disimpan ke Google Sheets! ✓`, 'success');
+        },
+
+        tukarStatusAktif(p, statusBaru) {
+          const label = { 'AKTIF': 'Aktif', 'BERHENTI': 'Berhenti', 'PINDAH': 'Pindah' }[statusBaru] || statusBaru;
+          this.pelatihList = this.pelatihList.map(x => x.id === p.id ? { ...x, statusAktif: statusBaru } : x);
+          this.triggerNotice(`Status ${p.nama} → ${label.toUpperCase()}. Menyimpan...`);
+          this._pushToGAS().then(() => this.triggerNotice('Status dikemas kini dalam Google Sheets ✓'));
+          this.refreshIcons();
+        },
+
+        editPelatih(p) {
+          if (!this.appConfig.isInputActive) {
+            this.triggerNotice("Penyuntingan disekat oleh Admin!", "error"); return;
+          }
+          this.editingId = p.id;
+          this.selectedProgramId = p.programId;
+          this.formNama = p.nama; this.formIc = p.ic;
+          this.formAngkaGiliran = p.angkaGiliran || '';
+          this.formTarikhCA04 = p.tarikhCA04 || '';
+          this.appConfig.abilities.forEach(ab => { this.formScores[ab.id] = p.scores[ab.id] || 0; });
+          this.formMethod = 'new';
+          this.activeTab = 'form';
+          this.triggerNotice(`Sedia menyunting data ${p.nama}`);
+          this.refreshIcons();
+        },
+
+        cancelEdit() { this.clearForm(); this.triggerNotice("Penyuntingan dibatalkan."); },
+
+        cetakSlipPelatih(p) {
+          this.selectedPelatihForSlip = p;
+          this.activePrintType = 'slip';
+          this.showSlipModal = true;
+          this.refreshIcons();
+        },
+
+        cetakJadualMarkah() {
+          this.activePrintType = 'table';
+          this.refreshIcons();
+          setTimeout(() => window.print(), 300);
+        },
+
+        pemicuCetak() { window.print(); },
+
+        getFilteredList() {
+          const programFiltered = this.selectedProgramId === 'SEMUA'
+            ? this.pelatihList
+            : this.pelatihList.filter(p => p.programId === this.selectedProgramId);
+          return programFiltered.filter(p => {
+            const matchSearch = p.nama.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                                (p.angkaGiliran && p.angkaGiliran.toLowerCase().includes(this.searchQuery.toLowerCase())) ||
+                                p.ic.includes(this.searchQuery);
+            const matchStatus = this.filterKeputusan === 'SEMUA' ? true : p.keputusan === this.filterKeputusan;
+            const aktif = p.statusAktif || 'AKTIF';
+            const matchAktif = this.filterStatusAktif === 'SEMUA' ? true : aktif === this.filterStatusAktif;
+            return matchSearch && matchStatus && matchAktif;
+          });
+        },
+
+        getFilteredPelatihByProgram() {
+          if (this.selectedProgramId === 'SEMUA') return this.pelatihList;
+          return this.pelatihList.filter(p => p.programId === this.selectedProgramId);
+        },
+
+        getStudentCountForProgram(prgId) {
+          return this.pelatihList.filter(p => p.programId === prgId && (p.statusAktif || 'AKTIF') === 'AKTIF').length;
+        },
+
+        getLulusCountForProgram(prgId) {
+          return this.pelatihList.filter(p => p.programId === prgId && p.keputusan === 'LULUS' && (p.statusAktif || 'AKTIF') === 'AKTIF').length;
+        },
+
+        getPassRateForProgram(prgId) {
+          const total = this.getStudentCountForProgram(prgId);
+          return total === 0 ? 0 : ((this.getLulusCountForProgram(prgId) / total) * 100).toFixed(0);
+        },
+
+        getProgramCode(prgId) {
+          const prg = this.programsList.find(p => p.id === prgId);
+          return prg ? prg.code : '-';
+        },
+
+        getProgramName(prgId) {
+          const prg = this.programsList.find(p => p.id === prgId);
+          return prg ? prg.name : 'N/A';
+        },
+
+        getActiveProgramDetails() {
+          if (this.selectedProgramId === 'SEMUA') return { name: "SEMUA PROGRAM SEKALIGUS", code: "SEMUA" };
+          return this.programsList.find(p => p.id === this.selectedProgramId) || { name: "-", code: "-" };
+        },
+
+        loadSampleData() {
+          this.pelatihList = JSON.parse(JSON.stringify(this.REAL_SAMPLES_PELATIH));
+          this.triggerNotice("Sampel rekod KV Likas dimuatkan. Tekan Simpan Admin untuk hantar ke Sheets.");
+        },
+
+        // ════════════════════════════════════════════════════════════
+        // ADMIN
+        // ════════════════════════════════════════════════════════════
+        triggerAdminAccess() {
+          if (this.isAdminUnlocked) {
+            this.activeTab = 'admin';
+            this.tempConfig = JSON.parse(JSON.stringify(this.appConfig));
+            this.tempPrograms = JSON.parse(JSON.stringify(this.programsList));
+          } else {
+            this.adminPasswordInput = '';
+            this.showAdminAuthModal = true;
+          }
+          this.refreshIcons();
+        },
+
+        addActivityLog(status, perincian) {
+          const logEntry = {
+            id: `LOG_${Date.now()}`,
+            timestamp: new Date().toLocaleString('ms-MY', { hour12: false }),
+            status, perincian
+          };
+          this.adminActivityLogs = [logEntry, ...this.adminActivityLogs];
+          localStorage.setItem('ca_admin_logs', JSON.stringify(this.adminActivityLogs.slice(0, 200)));
+        },
+
+        unlockAdminDashboard() {
+          if (this.adminPasswordInput === this.appConfig.adminPassword) {
+            this.isAdminUnlocked = true;
+            this.showAdminAuthModal = false;
+            this.activeTab = 'admin';
+            this.tempConfig = JSON.parse(JSON.stringify(this.appConfig));
+            this.tempPrograms = JSON.parse(JSON.stringify(this.programsList));
+            this.addActivityLog('LOG MASUK', 'Berjaya log masuk ke Kabin Admin.');
+            this.triggerNotice("Kabin Admin berjaya dinyahkunci!", "success");
+          } else {
+            this.addActivityLog('GAGAL LOG MASUK', 'Kata laluan salah.');
+            this.triggerNotice("Kata laluan salah!", "error");
+          }
+          this.refreshIcons();
+        },
+
+        logoutAdmin() {
+          this.addActivityLog('LOG KELUAR', 'Pentadbir menamatkan sesi.');
+          this.isAdminUnlocked = false;
+          this.activeTab = 'dashboard';
+          if (this.selectedProgramId === 'SEMUA') {
+            this.selectedProgramId = this.programsList.length > 0 ? this.programsList[0].id : 'prg1';
+          }
+          this.triggerNotice("Sesi Pentadbir ditamatkan.", "success");
+          this.refreshIcons();
+        },
+
+        clearActivityLogs() {
+          this.confirmModalTitle = "KOSONGKAN REKOD LOG";
+          this.confirmModalMessage = "Adakah anda pasti mahu mengosongkan semua log aktiviti?";
+          this.confirmAction = () => {
+            this.adminActivityLogs = [];
+            localStorage.removeItem('ca_admin_logs');
+            this.triggerNotice("Log dikosongkan.", "success");
+          };
+          this.showConfirmModal = true;
+          this.refreshIcons();
+        },
+
+        triggerDeletePelatih(p) {
+          this.confirmModalTitle = "PADAM REKOD CALON";
+          this.confirmModalMessage = `Adakah anda pasti mahu memadam rekod ${p.nama}? Data akan dipadam dari Google Sheets.`;
+          this.confirmAction = async () => {
+            this.pelatihList = this.pelatihList.filter(x => x.id !== p.id);
+            this.triggerNotice("Rekod dipadam. Mengemas kini Google Sheets...");
+            await this._pushToGAS();
+            this.triggerNotice("Rekod berjaya dipadam dari Google Sheets ✓", "success");
+          };
+          this.showConfirmModal = true;
+          this.refreshIcons();
+        },
+
+        executeConfirmAction() {
+          if (this.confirmAction) this.confirmAction();
+          this.showConfirmModal = false;
+        },
+
+        // Muat semula data terkini dari GAS
+        async fetchFromCloud(silent = false) {
+          if (!this.gasConfigured) {
+            if (!silent) this.triggerNotice("URL Apps Script belum dikonfigurasi dalam HTML!", "error");
+            return;
+          }
+          this.isSyncing = true;
+          try {
+            const res  = await fetch(GAS_URL, { method: 'GET', mode: 'cors' });
+            const data = await res.json();
+            if (data.status !== 'success') throw new Error(data.message);
+
+            if (Array.isArray(data.pelatih)) {
+              this.pelatihList = data.pelatih.map(p => this._recalcRecord(p));
+            }
+            if (data.abilities && data.abilities.length > 0) {
+              this.appConfig.abilities = data.abilities;
+              this.tempConfig.abilities = JSON.parse(JSON.stringify(data.abilities));
+            }
+            if (data.config) Object.assign(this.appConfig, data.config);
+            if (data.programs && data.programs.length > 0) {
+              this.programsList = data.programs;
+              this.tempPrograms = JSON.parse(JSON.stringify(data.programs));
+            }
+            this.syncError = false;
+            if (!silent) this.triggerNotice(`${this.pelatihList.length} rekod terkini dimuat dari Google Sheets ✓`, 'success');
+            this.addActivityLog('REFRESH DATA', `${this.pelatihList.length} rekod dimuat semula dari GAS.`);
+          } catch (err) {
+            this.syncError = true;
+            if (!silent) this.triggerNotice(`Gagal muat semula: ${err.message}`, 'error');
+          } finally {
+            this.isSyncing = false;
+            this.refreshIcons();
+          }
+        },
+
+        // ── Hantar ke GAS (alias publik untuk butang UI) ─────────
+        async pushToCloud() { await this._pushToGAS(); this.triggerNotice('Data disegerakkan ke Google Sheets ✓', 'success'); },
+
+        // ── Tidak lagi guna updateSyncStatus berasas URL ──────────
+        updateSyncStatus() { /* digantikan oleh gasConfigured */ },
+
+        // ════════════════════════════════════════════════════════════
+        // CSV
+        // ════════════════════════════════════════════════════════════
+        downloadInstructorCSVTemplate() {
+          const hdrs = this.appConfig.abilities.map(a => `${a.code}_MARKAH_PER${a.max}`).join(",");
+          let csv = `NAMA_PELATIH,NO_ANGKA_GILIRAN,NO_MYKAD_TANPA_SEMPANG,KOD_PROGRAM,${hdrs}\n`;
+          const list = this.getFilteredPelatihByProgram();
+          if (list.length > 0) {
+            list.forEach(p => {
+              const blanks = this.appConfig.abilities.map(() => '').join(",");
+              csv += `"${p.nama}","${p.angkaGiliran || ''}","${p.ic}","${this.getProgramCode(p.programId)}",${blanks}\n`;
+            });
+          } else {
+            csv += `"NAMA CONTOH","K05037/24/001","010203120000","${this.getActiveProgramDetails().code}",${this.appConfig.abilities.map(() => '').join(",")}\n`;
+          }
+          this._downloadBlob(csv, `SENARAI_CALON_${this.getActiveProgramDetails().code}.csv`);
+          this.triggerNotice("Templat dimuat turun. Isi markah dalam Excel.");
+        },
+
+        async handleInstructorCSVImport(event) {
+          if (!this.appConfig.isInputActive) { this.triggerNotice("Penyimpanan disekat oleh Admin!", "error"); return; }
+          if (!this.tenagaPengajar.trim())    { this.triggerNotice("Nama Tenaga Pengajar wajib diisi!", "error"); return; }
+          const file = event.target.files[0];
+          if (!file) return;
+          this.tempCsvFile = file;
+          this.csvDateCa04 = '';
+          this.showCsvDateModal = true;
+          this.refreshIcons();
+          event.target.value = '';
+        },
+
+        confirmCsvDateAndProcess() {
+          if (!this.csvDateCa04) { this.triggerNotice("Tarikh penilaian wajib diisi!", "error"); return; }
+          this.showCsvDateModal = false;
+          this.processInstructorCSV(this.tempCsvFile, this.csvDateCa04);
+        },
+
+        cancelCsvImport() {
+          this.showCsvDateModal = false; this.tempCsvFile = null; this.csvDateCa04 = '';
+          this.triggerNotice("Muat naik CSV dibatalkan.", "error");
+        },
+
+        processInstructorCSV(file, globalDate) {
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const lines = e.target.result.split(/\r?\n/);
+            if (lines.length < 2) { this.triggerNotice("CSV kosong!", "error"); return; }
+            let updated = 0, added = 0;
+            for (let i = 1; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (!line) continue;
+              const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''));
+              if (cols.length < 5) continue;
+              const namaCalon = cols[0] ? cols[0].toUpperCase() : '';
+              const icCalon   = cols[2] ? cols[2].replace(/[^0-9]/g, '') : '';
+              if (!namaCalon || !icCalon) continue;
+              const programCode = cols[3] ? cols[3].toUpperCase() : '';
+              const matchedPrg  = this.programsList.find(p => p.code === programCode);
+              const programId   = matchedPrg ? matchedPrg.id : this.selectedProgramId;
+              const scoresToSave = {}; let sumScores = 0, isLulus = true;
+              const sumMaxDyn = this.appConfig.abilities.reduce((s, a) => s + (a.max || 0), 0);
+              this.appConfig.abilities.forEach((ab, idx) => {
+                const s = Math.min(Math.max(parseFloat(cols[4 + idx]) || 0, 0), ab.max);
+                scoresToSave[ab.id] = s; sumScores += s;
+                if (s < ab.minPass) isLulus = false;
+              });
+              const pct    = sumMaxDyn > 0 ? parseFloat(((sumScores / sumMaxDyn) * 100).toFixed(2)) : 0;
+              const status = isLulus ? "LULUS" : "GAGAL";
+              const existIdx = this.pelatihList.findIndex(p => p.ic === icCalon);
+              const record = {
+                id: existIdx !== -1 ? this.pelatihList[existIdx].id : `ID_CSV_${Date.now()}_${i}`,
+                programId, nama: namaCalon, angkaGiliran: cols[1] ? cols[1].toUpperCase() : '', ic: icCalon,
+                scores: scoresToSave, tarikhCA04: globalDate,
+                jumlah: parseFloat(sumScores.toFixed(2)), peratus: pct, keputusan: status,
+                gred: this.getGred(pct, status), statusAktif: 'AKTIF',
+                tenagaPengajar: this.tenagaPengajar.toUpperCase().trim()
+              };
+              if (existIdx !== -1) { this.pelatihList[existIdx] = record; updated++; }
+              else                 { this.pelatihList.unshift(record); added++; }
+            }
+            if (updated > 0 || added > 0) {
+              this.triggerNotice(`Diproses: +${added} baru, ~${updated} kemas kini. Menyimpan ke Sheets...`);
+              await this._pushToGAS();
+              this.triggerNotice(`Berjaya! ${added + updated} rekod disimpan ke Google Sheets ✓`, 'success');
+              this.activeTab = 'list';
+              this.refreshIcons();
+            } else {
+              this.triggerNotice("Tiada rekod berjaya diimport.", "error");
+            }
+            this.tempCsvFile = null; this.csvDateCa04 = '';
+          };
+          reader.readAsText(file);
+        },
+
+        // ── Mod CSV Admin: 'daftar' atau 'markah' ──────────────────
+        adminCsvMod: 'daftar',
+        adminCsvPengajar: '',
+
+        // Templat: Daftar Calon sahaja (tiada markah)
+        downloadTemplatDaftarCalon() {
+          const programCodes = this.programsList.map(p => p.code).join(' / ');
+          let csv = `NAMA_PELATIH,NO_ANGKA_GILIRAN,NO_MYKAD_TANPA_SEMPANG,KOD_PROGRAM,NAMA_PENGAJAR_(PILIHAN)\n`;
+          csv += `"CONTOH NAMA PELATIH","K05037/25/001","010101010001","WTP","NURUL (TP)"\n`;
+          csv += `"CONTOH NAMA PELATIH 2","K05037/25/002","020202020002","WTE",""\n`;
+          csv += `\n`;
+          csv += `"[KOD PROGRAM YANG BOLEH DIGUNAKAN: ${programCodes}]"\n`;
+          this._downloadBlob(csv, "TEMPLAT_DAFTAR_CALON.csv");
+          this.triggerNotice("Templat Daftar Calon dimuat turun!");
+        },
+
+        // Templat: Import Markah Penuh (ada semua CA)
+        downloadCSVTemplate() {
+          const hdrs   = this.appConfig.abilities.map(a => `${a.code}_MARKAH_(MAX_${a.max})`).join(",");
+          let csv = `NAMA_PELATIH,NO_ANGKA_GILIRAN,NO_MYKAD_TANPA_SEMPANG,KOD_PROGRAM,TARIKH_PENILAIAN_(YYYY-MM-DD),${hdrs},NAMA_PENGAJAR_(PILIHAN)\n`;
+          csv += `"WARREN YOED LANGAD GITOM","K05037/24/001","81217121047","WTP","2024-11-20",${this.appConfig.abilities.map(a => a.minPass).join(',')},\n`;
+          csv += `"TARONCE","K05037/24/002","80921120991","WTP","2024-11-20",${this.appConfig.abilities.map(a => a.minPass).join(',')},\n`;
+          this._downloadBlob(csv, "TEMPLAT_IMPORT_MARKAH_PENUH.csv");
+          this.triggerNotice("Templat Import Markah Penuh dimuat turun!");
+        },
+
+        // ── PROSES CSV: Daftar Calon sahaja ────────────────────────
+        handleCsvDaftarCalon(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const lines = e.target.result.split(/\r?\n/);
+            if (lines.length < 2) { this.triggerNotice("CSV kosong atau format salah!", "error"); return; }
+            let ditambah = 0, dikemas = 0, diskip = 0;
+
+            for (let i = 1; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (!line || line.startsWith('[')) continue;
+              const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''));
+              if (cols.length < 3) continue;
+
+              const nama         = cols[0] ? cols[0].toUpperCase().trim() : '';
+              const angkaGiliran = cols[1] ? cols[1].toUpperCase().trim() : '';
+              const ic           = cols[2] ? cols[2].replace(/[^0-9]/g, '').trim() : '';
+              const programCode  = cols[3] ? cols[3].toUpperCase().trim() : '';
+              // Nama pengajar dari lajur ke-5 (pilihan), atau dari input manual admin
+              const pengajar     = (cols[4] || '').trim() || this.adminCsvPengajar.trim();
+
+              if (!nama || !ic) { diskip++; continue; }
+
+              const matchedPrg = this.programsList.find(p => p.code === programCode);
+              const programId  = matchedPrg ? matchedPrg.id : (this.programsList[0]?.id || 'prg1');
+
+              // Skor semua CA = 0 (belum diisi)
+              const scoresKosong = {};
+              this.appConfig.abilities.forEach(ab => { scoresKosong[ab.id] = 0; });
+
+              const existIdx = this.pelatihList.findIndex(p => p.ic === ic);
+
+              if (existIdx !== -1) {
+                // Kemaskini maklumat asas sahaja, JANGAN overwrite markah sedia ada
+                this.pelatihList[existIdx] = {
+                  ...this.pelatihList[existIdx],
+                  nama,
+                  angkaGiliran: angkaGiliran || this.pelatihList[existIdx].angkaGiliran,
+                  programId,
+                  statusAktif: 'AKTIF',
+                  tenagaPengajar: pengajar || this.pelatihList[existIdx].tenagaPengajar || ''
+                };
+                dikemas++;
+              } else {
+                // Rekod baru — skor kosong, belum ada markah
+                this.pelatihList.unshift({
+                  id            : `ID_DAFTAR_${Date.now()}_${i}`,
+                  nama, angkaGiliran, ic, programId,
+                  scores        : scoresKosong,
+                  tarikhCA04    : '',
+                  jumlah        : 0,
+                  peratus       : 0,
+                  keputusan     : 'BELUM DINILAI',
+                  gred          : '-',
+                  statusAktif   : 'AKTIF',
+                  tenagaPengajar: pengajar
+                });
+                ditambah++;
+              }
+            }
+
+            if (ditambah > 0 || dikemas > 0) {
+              this.triggerNotice(`Daftar Calon: +${ditambah} baru, ~${dikemas} kemas kini${diskip > 0 ? `, ${diskip} baris diskip` : ''}. Menyimpan...`);
+              await this._pushToGAS();
+              this.triggerNotice(`✓ ${ditambah + dikemas} calon berjaya didaftarkan ke Google Sheets. Markah boleh diisi oleh guru kemudian.`, 'success');
+              this.activeTab = 'list';
+              this.refreshIcons();
+            } else {
+              this.triggerNotice(`Tiada rekod berjaya diproses. ${diskip} baris diskip (nama/IC kosong).`, "error");
+            }
+          };
+          reader.readAsText(file);
+          event.target.value = '';
+        },
+
+        // ── PROSES CSV: Import Markah Penuh ────────────────────────
+        handleCsvImport(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const lines = e.target.result.split(/\r?\n/);
+            if (lines.length < 2) { this.triggerNotice("CSV kosong!", "error"); return; }
+            let updated = 0, added = 0;
+
+            for (let i = 1; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (!line) continue;
+              const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''));
+              if (cols.length < 5) continue;
+
+              const nama         = cols[0] ? cols[0].toUpperCase() : '';
+              const angkaGiliran = cols[1] ? cols[1].toUpperCase() : '';
+              const ic           = cols[2] ? cols[2].replace(/[^0-9]/g, '') : '';
+              const programCode  = cols[3] ? cols[3].toUpperCase() : '';
+              const tarikhCA04   = cols[4] || '';
+              // Nama pengajar: lajur selepas semua CA, atau input manual
+              const pengajarCol  = cols[5 + this.appConfig.abilities.length] || '';
+              const pengajar     = pengajarCol.trim() || this.adminCsvPengajar.trim() || 'ADMIN';
+
+              if (!nama || !ic) continue;
+
+              const matchedPrg = this.programsList.find(p => p.code === programCode);
+              const programId  = matchedPrg ? matchedPrg.id : (this.programsList[0]?.id || 'prg1');
+
+              const scoresToSave = {};
+              let sumScores = 0, isLulus = true;
+              const sumMaxDyn = this.appConfig.abilities.reduce((s, a) => s + (a.max || 0), 0);
+
+              this.appConfig.abilities.forEach((ab, idx) => {
+                const s = Math.min(Math.max(parseFloat(cols[5 + idx]) || 0, 0), ab.max);
+                scoresToSave[ab.id] = s;
+                sumScores += s;
+                if (s < ab.minPass) isLulus = false;
+              });
+
+              const pct    = sumMaxDyn > 0 ? parseFloat(((sumScores / sumMaxDyn) * 100).toFixed(2)) : 0;
+              const status = isLulus ? "LULUS" : "GAGAL";
+              const existIdx = this.pelatihList.findIndex(p => p.ic === ic);
+
+              const record = {
+                id            : existIdx !== -1 ? this.pelatihList[existIdx].id : `ID_ADMIN_${Date.now()}_${i}`,
+                programId, nama, angkaGiliran, ic,
+                scores        : scoresToSave,
+                tarikhCA04,
+                jumlah        : parseFloat(sumScores.toFixed(2)),
+                peratus       : pct,
+                keputusan     : status,
+                gred          : this.getGred(pct, status),
+                statusAktif   : 'AKTIF',
+                tenagaPengajar: pengajar
+              };
+
+              if (existIdx !== -1) { this.pelatihList[existIdx] = record; updated++; }
+              else                 { this.pelatihList.unshift(record); added++; }
+            }
+
+            if (updated > 0 || added > 0) {
+              this.triggerNotice(`Import Markah: +${added} baru, ~${updated} kemas kini. Menyimpan...`);
+              await this._pushToGAS();
+              this.triggerNotice(`✓ ${added + updated} rekod markah disimpan ke Google Sheets.`, 'success');
+              this.activeTab = 'list';
+              this.refreshIcons();
+            } else {
+              this.triggerNotice("Tiada rekod berjaya diimport. Semak format CSV.", "error");
+            }
+          };
+          reader.readAsText(file);
+          event.target.value = '';
+        },
+
+        handleExportCSV() {
+          if (this.pelatihList.length === 0) { this.triggerNotice("Tiada data!", "error"); return; }
+          const hdrs = this.appConfig.abilities.map(a => `${a.code}_SKOR`).join(",");
+          let csv = `BIL,NAMA CALON,NO ANGKA GILIRAN,NO KAD PENGENALAN,KOD PROGRAM,${hdrs},JUMLAH,PERATUS,KEPUTUSAN,KEPUTUSAN_KOMPETENSI,TENAGA_PENGAJAR\n`;
+          this.getFilteredList().forEach((p, idx) => {
+            const scores = this.appConfig.abilities.map(ab => (p.scores[ab.id] || 0).toFixed(0)).join(",");
+            csv += [idx+1, `"${p.nama}"`, `"${p.angkaGiliran||''}"`, `'${p.ic}`, `"${this.getProgramCode(p.programId)}"`,
+                    scores, p.jumlah.toFixed(0), `${p.peratus.toFixed(0)}%`, p.keputusan, p.gred, `"${p.tenagaPengajar||'N/A'}"`].join(",") + "\n";
+          });
+          this._downloadBlob(csv, "REKOD_CORE_ABILITIES_EKSPORT.csv");
+          this.triggerNotice("Laporan markah berjaya dimuat turun!");
+        },
+
+        _downloadBlob(content, filename) {
+          const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+          const url  = URL.createObjectURL(blob);
+          const a    = Object.assign(document.createElement("a"), { href: url });
+          a.setAttribute("download", filename);
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        },
+
+        // ════════════════════════════════════════════════════════════
+        // ADMIN — TAMBAH/PADAM CA & PROGRAM
+        // ════════════════════════════════════════════════════════════
+        addTempProgram() {
+          if (!this.newProgramCode.trim() || !this.newProgramName.trim()) { this.triggerNotice("Sila isikan maklumat program!", "error"); return; }
+          this.tempPrograms.push({ id: `prg_${Date.now()}`, code: this.newProgramCode.toUpperCase().trim(), name: this.newProgramName.toUpperCase().trim() });
+          this.newProgramCode = ''; this.newProgramName = '';
+          this.triggerNotice("Ditambah ke draf. Klik Simpan!");
+        },
+
+        removeTempProgram(id) {
+          this.tempPrograms = this.tempPrograms.filter(p => p.id !== id);
+          this.triggerNotice("Draf program dibuang.");
+        },
+
+        addTempAbility() {
+          if (!this.newAbilityCode.trim() || !this.newAbilityName.trim()) { this.triggerNotice("Sila isikan Kod CA dan Nama!", "error"); return; }
+          const code = this.newAbilityCode.toUpperCase().trim();
+          const idKey = code.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (this.tempConfig.abilities.find(a => a.code === code)) { this.triggerNotice(`Kod ${code} sudah wujud!`, "error"); return; }
+          this.tempConfig.abilities.push({ id: idKey, code, name: this.newAbilityName.toUpperCase().trim(), max: parseInt(this.newAbilityMax) || 20, minPass: parseInt(this.newAbilityMinPass) || 12 });
+          this.newAbilityCode = ''; this.newAbilityName = ''; this.newAbilityMax = 20; this.newAbilityMinPass = 12;
+          this.triggerNotice(`${code} ditambah ke draf. Klik Simpan untuk mengesahkan.`);
+        },
+
+        removeTempAbility(id) {
+          if (this.tempConfig.abilities.length <= 1) { this.triggerNotice("Sekurang-kurangnya 1 CA mesti wujud!", "error"); return; }
+          const ab = this.tempConfig.abilities.find(a => a.id === id);
+          this.confirmModalTitle   = "PADAM ABILITIES";
+          this.confirmModalMessage = `Padam ${ab ? ab.code + ' - ' + ab.name : 'abilities ini'}?`;
+          this.confirmAction = () => {
+            this.tempConfig.abilities = this.tempConfig.abilities.filter(a => a.id !== id);
+            this.triggerNotice("Dibuang dari draf. Klik Simpan.");
+          };
+          this.showConfirmModal = true; this.refreshIcons();
+        },
+
+        getTotalMaxScore() {
+          return this.appConfig?.abilities?.reduce((s, ab) => s + (ab.max || 0), 0) || 0;
+        },
+
+        getLastAbilityId() {
+          return this.appConfig?.abilities?.length > 0 ? this.appConfig.abilities[this.appConfig.abilities.length - 1].id : 'ca04';
+        },
+
+        // ════════════════════════════════════════════════════════════
+        // SIMPAN TETAPAN ADMIN → terus ke GAS
+        // ════════════════════════════════════════════════════════════
+        async saveAllAdminSettings() {
+          this.appConfig    = JSON.parse(JSON.stringify(this.tempConfig));
+          this.programsList = JSON.parse(JSON.stringify(this.tempPrograms));
+
+          // Kira semula semua rekod pelatih
+          this.pelatihList = this.pelatihList.map(p => this._recalcRecord(p));
+
+          this.addActivityLog('KEMASKINI TETAPAN', `${this.appConfig.abilities.length} CA, ${this.programsList.length} program dikemas kini.`);
+          this.triggerNotice(`Menyimpan konfigurasi ke Google Sheets...`);
+          await this._pushToGAS();
+          this.triggerNotice(`Semua konfigurasi berjaya disimpan ke Google Sheets ✓ (${this.appConfig.abilities.length} CA aktif)`, "success");
+        },
+
+        triggerResetDefaults() {
+          this.confirmModalTitle   = "TETAPAN ASAL KILANG";
+          this.confirmModalMessage = "Ini akan mengembalikan semua tetapan asal KV Likas dan memadam semua data Google Sheets. Teruskan?";
+          this.confirmAction = async () => {
+            localStorage.removeItem('ca_admin_logs');
+            this.isAdminUnlocked   = false;
+            this.adminActivityLogs = [];
+            await this.initSystem();
+            this.activeTab = 'dashboard';
+            this.triggerNotice("Sistem ditetapkan semula.");
+          };
+          this.showConfirmModal = true; this.refreshIcons();
+        },
+
+        // ════════════════════════════════════════════════════════════
+        // STATISTIK
+        // ════════════════════════════════════════════════════════════
+        calculateProgramStats() {
+          const listAll = this.getFilteredPelatihByProgram();
+          const aktif   = listAll.filter(p => (p.statusAktif || 'AKTIF') === 'AKTIF');
+          // Kira hanya yang SUDAH dinilai untuk statistik keputusan
+          const sudahDinilai = aktif.filter(p => p.keputusan !== 'BELUM DINILAI');
+          const belumDinilai = aktif.filter(p => p.keputusan === 'BELUM DINILAI').length;
+          const tidakAktif   = listAll.filter(p => (p.statusAktif || 'AKTIF') !== 'AKTIF').length;
+          const total  = aktif.length;
+          const lulus  = sudahDinilai.filter(p => p.keputusan === 'LULUS').length;
+          return {
+            total,
+            lulus,
+            belumDinilai,
+            kadarLulus: sudahDinilai.length > 0 ? ((lulus / sudahDinilai.length) * 100).toFixed(1) : 0,
+            totalTidakAktif: tidakAktif
+          };
+        },
+
+        getPrintInstructorName() {
+          const list = this.getFilteredList();
+          const instructors = [...new Set(list.map(p => p.tenagaPengajar).filter(Boolean))];
+          return instructors.length === 0
+            ? (this.tenagaPengajar ? this.tenagaPengajar.trim().toUpperCase() : '')
+            : instructors.join(' / ').toUpperCase();
+        },
+
+        calculateOverallStats() {
+          const list = this.pelatihList.filter(p => (p.statusAktif || 'AKTIF') === 'AKTIF');
+          const total = list.length;
+          if (total === 0) return { total: 0, lulus: 0, kadarLulus: 0 };
+          const lulus = list.filter(p => p.keputusan === 'LULUS').length;
+          return { total, lulus, kadarLulus: ((lulus / total) * 100).toFixed(1) };
+        },
+
+        getInstructorsList() {
+          const instructors = {};
+          this.pelatihList.forEach(p => {
+            const name = (p.tenagaPengajar || '').trim().toUpperCase();
+            if (!name) return;
+            if (!instructors[name]) instructors[name] = { nama: name, programs: new Set(), total: 0, lulus: 0 };
+            instructors[name].programs.add(p.programId);
+            if ((p.statusAktif || 'AKTIF') === 'AKTIF') {
+              instructors[name].total++;
+              if (p.keputusan === 'LULUS') instructors[name].lulus++;
+            }
+          });
+          return Object.values(instructors).map(inst => ({
+            nama: inst.nama,
+            programs: Array.from(inst.programs).map(pid => this.getProgramCode(pid)).join(', ') || 'N/A',
+            total: inst.total,
+            lulus: inst.lulus,
+            kadarLulus: inst.total > 0 ? ((inst.lulus / inst.total) * 100).toFixed(0) : 0
+          }));
+        }
+      };
+    }
+  </script>
+
+
+      };
+    }
+  </script>
+
+  <!-- Alpine.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body 
+  class="bg-slate-50 text-slate-800 transition-colors duration-300 min-h-screen flex flex-col"
+  x-data="systemState()"
+  x-init="initSystem()"
+>
+
+  <!-- SKRIN LOADING — papar semasa data dimuat dari Google Sheets -->
+  <div x-show="isLoading" x-transition.opacity class="fixed inset-0 z-[999] bg-slate-900/95 flex flex-col items-center justify-center gap-6">
+    <div class="text-center space-y-4">
+      <div class="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto"></div>
+      <div>
+        <p class="text-white font-black text-lg tracking-wide">SISTEM REKOD MARKAH CA</p>
+        <p class="text-slate-400 text-sm font-medium mt-1" x-text="loadingMsg"></p>
+      </div>
+      <div class="flex items-center gap-2 bg-emerald-900/50 border border-emerald-700 rounded-xl px-5 py-2.5">
+        <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+        <span class="text-emerald-300 text-xs font-bold">Menghubungi Google Sheets...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEADER UTAMA -->
+  <header :class="appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? themeClasses[appConfig.temaWarna].bg : 'bg-blue-600'" class="text-white shadow-md sticky top-0 z-40 transition-colors duration-300 no-print">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="bg-white text-slate-900 p-2 rounded-xl shadow-md flex items-center justify-center">
+          <i data-lucide="award" :class="appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? themeClasses[appConfig.temaWarna].text : 'text-blue-600'" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-extrabold tracking-tight" x-text="appConfig.namaSistem"></h1>
+          <p class="text-xs text-white/90 font-semibold uppercase tracking-wider" x-text="`${appConfig.pusatBertauliah} • ${appConfig.tahap}`"></p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Status Google Sheets Indicator -->
+        <div class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
+             :class="{
+               'bg-emerald-950 border-emerald-500 text-emerald-400': gasConfigured && !syncError && !isSyncing && !isLoading,
+               'bg-yellow-950 border-yellow-500 text-yellow-400':   isSyncing || isLoading,
+               'bg-red-950 border-red-500 text-red-400':            syncError,
+               'bg-slate-800 border-slate-600 text-slate-400':      !gasConfigured
+             }">
+          <span class="w-2 h-2 rounded-full"
+                :class="{
+                  'bg-emerald-400 animate-ping': gasConfigured && !syncError && !isSyncing && !isLoading,
+                  'bg-yellow-400 animate-ping':  isSyncing || isLoading,
+                  'bg-red-400':                  syncError,
+                  'bg-slate-400':                !gasConfigured
+                }"></span>
+          <span x-text="isLoading ? 'Memuatkan...' : (isSyncing ? 'Menyimpan ke Sheets...' : (syncError ? 'Gagal Hubungi Sheets' : (gasConfigured ? 'Google Sheets Aktif ✓' : 'GAS Belum Dikonfigurasi')))"></span>
+        </div>
+        <span class="text-xs bg-black/15 text-white py-1 px-3.5 rounded-full border border-white/20 font-bold" x-text="`Kohort: ${appConfig.kohort}`"></span>
+        <span class="text-xs bg-yellow-400 text-slate-950 py-1 px-3.5 rounded-full font-black shadow-sm" x-text="`${programsList.length} Program`"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- POP-UP TOAST NOTIFIKASI -->
+  <div class="fixed bottom-6 right-6 z-50 transition-all duration-300 transform no-print" x-show="notification" x-transition>
+    <div 
+      :class="notificationType === 'error' ? 'bg-red-600' : 'bg-emerald-600'"
+      class="flex items-center gap-2.5 px-5 py-3 rounded-xl shadow-2xl text-white font-medium"
+    >
+      <template x-if="notificationType === 'error'">
+        <i data-lucide="x-circle" class="w-5 h-5"></i>
+      </template>
+      <template x-if="notificationType === 'success'">
+        <i data-lucide="check-circle" class="w-5 h-5"></i>
+      </template>
+      <span x-text="notificationText"></span>
+    </div>
+  </div>
+
+  <!-- MODAL PEMILIHAN / CONFIRMATION KUSTOM -->
+  <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 no-print" x-show="showConfirmModal" x-transition>
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-100">
+      <div class="flex gap-3 items-start">
+        <div class="bg-red-50 text-red-600 p-2.5 rounded-xl">
+          <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="text-slate-950 font-extrabold text-sm uppercase" x-text="confirmModalTitle"></h3>
+          <p class="text-xs text-slate-500 mt-1" x-text="confirmModalMessage"></p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button 
+          @click="showConfirmModal = false"
+          class="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg"
+        >Batal</button>
+        <button 
+          @click="executeConfirmAction()"
+          class="px-4 py-2 text-xs font-black text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm"
+        >Teruskan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL LOGIN ADMIN -->
+  <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 no-print" x-show="showAdminAuthModal" x-transition>
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 border border-slate-100">
+      <div class="text-center space-y-1">
+        <div class="mx-auto w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-2">
+          <i data-lucide="settings" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-slate-950 font-extrabold text-sm uppercase">PENGESAHAN DOKUMEN</h3>
+        <p class="text-xs text-slate-400"> <span class="font-bold"> </span></p>
+      </div>
+      
+      <div class="space-y-2">
+        <label class="block text-[11px] font-black text-slate-600">Kata Laluan Akses Admin</label>
+        <input 
+          type="password" 
+          x-model="adminPasswordInput"
+          placeholder="Sila masukkan kata laluan"
+          @keyup.enter="unlockAdminDashboard()"
+          class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 text-xs font-bold focus:outline-none bg-white"
+        />
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button 
+          @click="showAdminAuthModal = false"
+          class="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg"
+        >Batal</button>
+        <button 
+          @click="unlockAdminDashboard()"
+          class="px-4 py-2 text-xs font-black text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm"
+        >Nyahkunci</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIP CETAK MODAL (PREVIEW RASMI) - 100% PERSIS SEPERTI GAMBAR image_49218d.png -->
+  <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto no-print" x-show="showSlipModal" x-transition>
+    <div class="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-6 border border-slate-200">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="text-sm font-extrabold text-slate-800 uppercase flex items-center gap-2">
+          <i data-lucide="file-text" class="text-blue-600"></i> PREVIEW SLIP KEPUTUSAN (Lampiran 2a JPK/CA/PT-T1)
+        </h3>
+        <button @click="showSlipModal = false" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- KAWASAN PREVIEW SLIP PELATIH (100% PERSIS SEPERTI GAMBAR image_49218d.png) -->
+      <div class="overflow-auto max-h-[60vh] p-4 bg-gray-100 rounded-xl">
+        <div class="bg-white p-8 border border-slate-300 text-slate-900 mx-auto" style="width: 210mm; min-height: 297mm; max-width: 100%; box-sizing: border-box;" id="print-area">
+          
+          <!-- Top header metadata -->
+          <div class="flex justify-between items-center text-[11px] font-sans text-black mb-4">
+            <div>Lampiran 2a</div>
+            <div class="font-bold">JPK/CA/PT-T1</div>
+          </div>
+
+          <!-- Main Title -->
+          <div class="text-center mb-6">
+            <h2 class="text-[15px] font-extrabold uppercase tracking-tight text-black" x-text="appConfig.slipTajuk"></h2>
+            <p class="text-[11px] text-gray-700 italic mt-0.5">(Borang ini perlu diisi oleh PP pada setiap kali menjalankan Penilaian Pengetahuan)</p>
+            <div class="mt-4">
+              <span class="text-[13px] font-extrabold uppercase border-b-2 border-black pb-0.5 tracking-widest text-black">CORE ABILITIES – TAHAP 1</span>
+            </div>
+          </div>
+
+          <template x-if="selectedPelatihForSlip">
+            <div class="space-y-6">
+              
+              <!-- Profil Pelatih (Excel-style borders 100% matching image_49218d.png) -->
+              <table class="w-full border-collapse border-2 border-black text-xs font-sans">
+                <tbody>
+                  <tr class="border-b-2 border-black">
+                    <td class="w-[30%] p-2 font-bold border-r-2 border-black bg-white text-black">Nama Pelatih :</td>
+                    <td class="p-2 uppercase font-extrabold text-black bg-white" x-text="selectedPelatihForSlip.nama"></td>
+                  </tr>
+                  <tr class="border-b-2 border-black">
+                    <td class="p-2 font-bold border-r-2 border-black bg-white text-black">No Kad Pengenalan :</td>
+                    <td class="p-2 font-mono-custom font-extrabold text-black bg-white" x-text="selectedPelatihForSlip.ic"></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold border-r-2 border-black bg-white text-black">Nama & Kod Pusat Bertauliah :</td>
+                    <td class="p-2 uppercase font-extrabold text-black bg-white" x-text="appConfig.pusatBertauliah"></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <!-- Main Abilities Table (100% matching image_49218d.png) -->
+              <table class="w-full border-collapse border-2 border-black text-xs text-center font-sans">
+                <thead>
+                  <tr class="bg-gray-200 text-black border-b-2 border-black font-extrabold">
+                    <th class="w-[15%] p-2.5 border-r-2 border-black text-center uppercase tracking-wider">ITEM</th>
+                    <th class="w-[60%] p-2.5 border-r-2 border-black text-left pl-4 uppercase tracking-wider">ABILITIES</th>
+                    <th class="w-[25%] p-2.5 text-center uppercase tracking-wider">MARKAH DIPEROLEHI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(ab, idx) in appConfig.abilities" :key="ab.id">
+                    <tr class="border-b-2 border-black bg-white">
+                      <td class="p-2 border-r-2 border-black font-extrabold text-black" x-text="ab.code"></td>
+                      <td class="p-2 border-r-2 border-black text-left pl-4 font-extrabold text-black" x-text="ab.name"></td>
+                      <td class="p-2 font-mono-custom text-black font-semibold" x-text="parseFloat(selectedPelatihForSlip.scores[ab.id] || 0).toFixed(0)"></td>
+                    </tr>
+                  </template>
+                  <tr class="font-extrabold bg-white">
+                    <td colspan="2" class="p-2.5 text-right pr-6 border-r-2 border-black uppercase text-black">JUMLAH (A)</td>
+                    <td class="p-2.5 font-mono-custom text-black text-center font-black" x-text="parseFloat(selectedPelatihForSlip.jumlah || 0).toFixed(0)"></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <!-- Verification Section Title -->
+              <h3 class="text-xs font-black uppercase text-black tracking-wider mt-4 font-sans">PENGESAHAN PP / PPD</h3>
+
+              <!-- Verification Grid Table (100% matching image_49218d.png structure) -->
+              <table class="w-full border-collapse border-2 border-black text-xs text-left bg-white font-sans">
+                <tbody>
+                  <tr class="border-b-2 border-black">
+                    <td class="p-2 font-bold border-r-2 border-black w-[15%]">Tarikh Penilaian :</td>
+                    <td class="p-2 border-r-2 border-black w-[18%] font-mono-custom font-extrabold text-black" x-text="selectedPelatihForSlip.tarikhCA04 ? formatDate(selectedPelatihForSlip.tarikhCA04) : '____________________'"></td>
+                    <td class="p-2 font-bold border-r-2 border-black w-[12%]">Nama PP:</td>
+                    <td class="p-2 border-r-2 border-black w-[20%] font-extrabold uppercase text-black"></td>
+                    <td class="p-2 font-bold border-r-2 border-black w-[15%]">T/tangan PP:</td>
+                    <td class="p-2 w-[20%]">____________________</td>
+                  </tr>
+                  <tr class="border-b-2 border-black">
+                    <td class="p-2 font-bold border-r-2 border-black">Tarikh:</td>
+                    <td class="p-2 border-r-2 border-black">____________________</td>
+                    <td class="p-2 font-bold border-r-2 border-black">Nama PPD:</td>
+                    <td class="p-2 border-r-2 border-black w-[20%] font-extrabold uppercase text-black"></td>
+                    <td class="p-2 font-bold border-r-2 border-black">T/tangan PPD:</td>
+                    <td class="p-2">____________________</td>
+                  </tr>
+                  <tr class="font-extrabold text-center">
+                    <td colspan="3" class="p-2.5 border-r-2 border-black bg-gray-50 uppercase text-black">KEPUTUSAN</td>
+                    <td colspan="3" class="p-2.5 font-mono-custom text-black bg-white" x-text="`${appConfig.abilities ? ((Math.round(selectedPelatihForSlip.jumlah || 0) / appConfig.abilities.reduce((s,a)=>s+(a.max||0),0)) * 30).toFixed(0) : 0}%`"></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <!-- Note footers exactly matching image_49218d.png -->
+              <div class="text-[9px] text-gray-800 space-y-1.5 mt-4 font-medium border-t pt-4 font-sans">
+                <p class="font-bold" x-text="appConfig.slipNotaKaki"></p>
+                <p class="text-gray-500 font-mono-custom text-[8px]">Kemaskini Terakhir: 12 Januari 2024.</p>
+              </div>
+
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t font-sans">
+        <button @click="showSlipModal = false" class="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Tutup</button>
+        <button @click="pemicuCetak()" class="px-4 py-2 text-xs font-black text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1">
+          <i data-lucide="printer" class="w-4 h-4"></i> Cetak / Simpan PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIP DI LUAR MODAL UNTUK TUJUAN PRINT SAHAJA - 100% PERSIS DAN MUAT DI DALAM A4 PORTRAIT -->
+  <div class="print-only p-4" id="print-only-layout">
+    
+    <!-- PAPARAN CETAKAN SLIP KEPUTUSAN CALON (100% PERSIS SEPERTI GAMBAR image_49218d.png) -->
+    <template x-if="activePrintType === 'slip' && selectedPelatihForSlip">
+      <div style="width: 210mm; min-height: 297mm; padding: 20px; box-sizing: border-box; background: white; color: black; font-family: sans-serif;">
+        
+        <!-- Top header metadata -->
+        <div class="flex justify-between items-center text-[11px] text-black mb-4">
+          <div>Lampiran 2a</div>
+          <div class="font-bold">JPK/CA/PT-T1</div>
+        </div>
+
+        <!-- Main Title -->
+        <div class="text-center mb-6">
+          <h2 class="text-[15px] font-extrabold uppercase tracking-tight text-black" x-text="appConfig.slipTajuk"></h2>
+          <p class="text-[11px] text-gray-700 italic mt-0.5">(Borang ini perlu diisi oleh PP pada setiap kali menjalankan Penilaian Pengetahuan)</p>
+          <div class="mt-4">
+            <span class="text-[13px] font-extrabold uppercase border-b-2 border-black pb-0.5 tracking-widest text-black">CORE ABILITIES – TAHAP 1</span>
+          </div>
+        </div>
+
+        <!-- Profil Pelatih (Excel-style borders 100% matching image_49218d.png) -->
+        <table class="w-full border-collapse border-2 border-black text-xs mb-6 font-sans">
+          <tbody>
+            <tr class="border-b-2 border-black">
+              <td class="w-[30%] p-2 font-bold border-r-2 border-black bg-white text-black">Nama Pelatih :</td>
+              <td class="p-2 uppercase font-extrabold text-black bg-white" x-text="selectedPelatihForSlip.nama"></td>
+            </tr>
+            <tr class="border-b-2 border-black">
+              <td class="p-2 font-bold border-r-2 border-black bg-white text-black">No Kad Pengenalan :</td>
+              <td class="p-2 font-mono-custom font-extrabold text-black bg-white" x-text="selectedPelatihForSlip.ic"></td>
+            </tr>
+            <tr>
+              <td class="p-2 font-bold border-r-2 border-black bg-white text-black">Nama & Kod Pusat Bertauliah :</td>
+              <td class="p-2 uppercase font-extrabold text-black bg-white" x-text="appConfig.pusatBertauliah"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Main Abilities Table (100% matching image_49218d.png) -->
+        <table class="w-full border-collapse border-2 border-black text-xs text-center mb-6 font-sans">
+          <thead>
+            <tr class="bg-gray-200 text-black border-b-2 border-black font-extrabold">
+              <th class="w-[15%] p-2.5 border-r-2 border-black text-center uppercase tracking-wider">ITEM</th>
+              <th class="w-[60%] p-2.5 border-r-2 border-black text-left pl-4 uppercase tracking-wider">ABILITIES</th>
+              <th class="w-[25%] p-2.5 text-center uppercase tracking-wider">MARKAH DIPEROLEHI</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="(ab, idx) in appConfig.abilities" :key="ab.id">
+              <tr class="border-b-2 border-black bg-white">
+                <td class="p-2 border-r-2 border-black font-extrabold text-black" x-text="ab.code"></td>
+                <td class="p-2 border-r-2 border-black text-left pl-4 font-extrabold text-black" x-text="ab.name"></td>
+                <td class="p-2 font-mono-custom text-black font-semibold" x-text="parseFloat(selectedPelatihForSlip.scores[ab.id] || 0).toFixed(0)"></td>
+              </tr>
+            </template>
+            <tr class="font-extrabold bg-white">
+              <td colspan="2" class="p-2.5 text-right pr-6 border-r-2 border-black uppercase text-black">JUMLAH (A)</td>
+              <td class="p-2.5 font-mono-custom text-black text-center font-black" x-text="parseFloat(selectedPelatihForSlip.jumlah || 0).toFixed(0)"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Verification Section Title -->
+        <h3 class="text-xs font-black uppercase text-black tracking-wider mt-4 font-sans">PENGESAHAN PP / PPD</h3>
+
+        <!-- Verification Grid Table (100% matching image_49218d.png structure) -->
+        <table class="w-full border-collapse border-2 border-black text-xs text-left bg-white mb-4 font-sans">
+          <tbody>
+            <tr class="border-b-2 border-black">
+              <td class="p-2 font-bold border-r-2 border-black w-[15%]">Tarikh Penilaian :</td>
+              <td class="p-2 border-r-2 border-black w-[18%] font-mono-custom font-extrabold text-black" x-text="selectedPelatihForSlip.tarikhCA04 ? formatDate(selectedPelatihForSlip.tarikhCA04) : '____________________'"></td>
+              <td class="p-2 font-bold border-r-2 border-black w-[12%]">Nama PP:</td>
+              <td class="p-2 border-r-2 border-black w-[20%] font-extrabold uppercase text-black"></td>
+              <td class="p-2 font-bold border-r-2 border-black w-[15%]">T/tangan PP:</td>
+              <td class="p-2 w-[20%]">____________________</td>
+            </tr>
+            <tr class="border-b-2 border-black">
+              <td class="p-2 font-bold border-r-2 border-black">Tarikh:</td>
+              <td class="p-2 border-r-2 border-black">____________________</td>
+              <td class="p-2 font-bold border-r-2 border-black">Nama PPD:</td>
+              <td class="p-2 border-r-2 border-black w-[20%] font-extrabold uppercase text-black"></td>
+              <td class="p-2 font-bold border-r-2 border-black">T/tangan PPD:</td>
+              <td class="p-2">____________________</td>
+            </tr>
+            <tr class="font-extrabold text-center">
+              <td colspan="3" class="p-2.5 border-r-2 border-black bg-gray-50 uppercase text-black">KEPUTUSAN</td>
+              <td colspan="3" class="p-2.5 font-mono-custom text-black bg-white" x-text="`${appConfig.abilities ? ((Math.round(selectedPelatihForSlip.jumlah || 0) / appConfig.abilities.reduce((s,a)=>s+(a.max||0),0)) * 30).toFixed(0) : 0}%`"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Note footers exactly matching image_49218d.png -->
+        <div class="text-[9px] text-gray-800 space-y-1.5 mt-4 font-medium pt-4 font-sans">
+          <p class="font-bold" x-text="appConfig.slipNotaKaki"></p>
+          <p class="text-gray-500 font-mono-custom text-[8px]">Kemaskini Terakhir: 12 Januari 2024.</p>
+        </div>
+
+      </div>
+    </template>
+
+    <!-- PAPARAN CETAKAN JADUAL SENARAI MARKAH RASMI (IKUT PROGRAM) -->
+    <template x-if="activePrintType === 'table'">
+      <div class="space-y-6">
+        <div class="text-center space-y-1 mb-6 border-b-2 border-slate-900 pb-4">
+          <h2 class="text-lg font-extrabold uppercase" x-text="appConfig.pusatBertauliah"></h2>
+          <h3 class="text-xs font-bold text-slate-600">SENARAI REKOD MARKAH PENILAIAN CORE ABILITIES TAHAP 1</h3>
+          <p class="text-[10px] font-semibold" x-text="`PROGRAM: ${getActiveProgramDetails().code} - ${getActiveProgramDetails().name} • KOHORT: ${appConfig.kohort}`"></p>
+        </div>
+
+        <table class="w-full text-[10px] border-collapse text-left table-thick-borders">
+          <thead>
+            <!-- Aras 1: Banner Penyelarasan Penuh -->
+            <tr class="bg-slate-100 text-slate-900 text-[10px] uppercase font-bold">
+              <th :colspan="appConfig.abilities ? appConfig.abilities.length + 8 : 13" class="py-2 px-4 text-center bg-slate-100 font-extrabold">
+                RUMUSAN REKOD MARKAH CORE ABILITIES <span x-text="appConfig.tahap.toUpperCase()"></span>, <span x-text="appConfig.pusatBertauliah"></span>. KOHORT <span x-text="appConfig.kohort"></span>
+              </th>
+            </tr>
+            <!-- Aras 2: coptpa & kappa -->
+            <tr class="bg-slate-50 text-slate-900 text-[9px] uppercase font-bold">
+              <th class="py-2 px-2 text-center" rowspan="2">Bil</th>
+              <th class="py-2 px-2" rowspan="2">Nama Pelatih</th>
+              <th class="py-2 px-2" rowspan="2">No. Angka Giliran</th>
+              <th class="py-2 px-2" rowspan="2">No. MyKad</th>
+              <th class="py-2 px-2 text-center" rowspan="2">Program</th>
+              <th class="py-1 px-2 text-center" :colspan="appConfig.abilities ? appConfig.abilities.length + 2 : 6">coptpa</th>
+              <th class="py-1 px-2 text-center" colspan="2">kappa</th>
+            </tr>
+            <!-- Aras 3: CA & Standard Modul -->
+            <tr class="bg-slate-50 text-slate-900 text-[9px] uppercase font-bold">
+              <template x-for="ab in appConfig.abilities" :key="ab.id">
+                <th class="py-2 px-1 text-center" x-text="ab.code"></th>
+              </template>
+              <th class="py-2 px-2 text-center">Jumlah (<span x-text="getTotalMaxScore()"></span>)</th>
+              <th class="py-2 px-2 text-center">Keputusan</th>
+              <th class="py-2 px-2 text-center">Peratus %</th>
+              <th class="py-2 px-2 text-center">Keputusan Kompetensi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="(p, idx) in getFilteredList()" :key="p.id">
+              <tr>
+                <td class="py-2 px-2 text-center font-mono-custom" x-text="idx + 1"></td>
+                <td class="py-2 px-2 font-bold uppercase" x-text="p.nama"></td>
+                <td class="py-2 px-2 font-mono-custom uppercase" x-text="p.angkaGiliran || '-'"></td>
+                <td class="py-2 px-2 font-mono-custom" x-text="p.ic"></td>
+                <td class="py-2 px-2 text-center font-bold" x-text="getProgramCode(p.programId)"></td>
+                <template x-for="ab in appConfig.abilities" :key="ab.id">
+                  <td class="py-2 px-1 text-center font-mono-custom">
+                    <span x-text="(p.scores[ab.id] || 0).toFixed(0)"></span>
+                    <div class="text-[8px] text-slate-500 font-bold" x-text="`(${(((p.scores[ab.id] || 0)/ab.max)*100).toFixed(0)}%)`"></div>
+                    <div class="text-[8px] font-extrabold mt-0.5" :class="(p.scores[ab.id] || 0) >= (ab.max * 0.6) ? 'text-emerald-700' : 'text-red-600'" x-text="(p.scores[ab.id] || 0) >= (ab.max * 0.6) ? 'LULUS' : 'GAGAL'"></div>
+                  </td>
+                </template>
+                <td class="py-2 px-2 text-center font-bold font-mono-custom" x-text="p.jumlah.toFixed(0)"></td>
+                <td class="py-2 px-2 text-center font-bold" x-text="p.keputusan"></td>
+                <td class="py-2 px-2 text-center font-bold font-mono-custom" x-text="`${p.peratus.toFixed(0)}%`"></td>
+                <td class="py-2 px-2 text-center text-[9px] font-bold" x-text="p.gred"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+
+        <!-- Ringkasan Statistik untuk Cetakan Jadual (hanya kira pelatih AKTIF) -->
+        <div class="grid grid-cols-3 gap-4 border border-slate-800 p-3 rounded text-[10px] bg-slate-50 mt-4">
+          <div>
+            <span class="font-bold text-slate-600">JUMLAH CALON AKTIF:</span>
+            <span class="font-black" x-text="`${getFilteredList().filter(x => (x.statusAktif || 'AKTIF') === 'AKTIF').length} Orang`"></span>
+          </div>
+          <div>
+            <span class="font-bold text-slate-600">KOMPETEN (LULUS):</span>
+            <span class="font-black text-emerald-700" x-text="`${getFilteredList().filter(x => x.keputusan === 'LULUS' && (x.statusAktif || 'AKTIF') === 'AKTIF').length} Orang`"></span>
+          </div>
+          <div>
+            <span class="font-bold text-slate-600">KADAR KELULUSAN KESELURUHAN:</span>
+            <span class="font-black text-blue-700" x-text="`${calculateProgramStats().kadarLulus}%`"></span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-8 pt-16 text-center text-[10px] font-sans">
+          <div class="space-y-12">
+            <p>Disediakan Oleh:<br><br><br>____________________________________<br>
+              <span x-text="appConfig.slipLabelTandatangan1 || 'TANDATANGAN TENAGA PENGAJAR'"></span><br>
+              <span class="font-extrabold uppercase mt-1 inline-block" x-text="getPrintInstructorName() ? `(${getPrintInstructorName()})` : '(NAMA TENAGA PENGAJAR)'"></span>
+            </p>
+          </div>
+          <div class="space-y-12">
+            <p>Disahkan Oleh:<br><br><br>____________________________________<br>
+              <span x-text="appConfig.slipLabelTandatangan2 || 'PENGESAHAN PENYELARAS TAHAP 1'"></span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </template>
+
+  </div>
+
+  <!-- JALUR KANDUNGAN UTAMA -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full no-print">
+
+    <!-- BANNER AMARAN: GAS Belum Dikonfigurasi atau Ralat -->
+    <div x-show="!isLoading && (!gasConfigured || syncError)" x-transition class="mb-4">
+      <!-- URL belum ditanam -->
+      <template x-if="!gasConfigured">
+        <div class="bg-amber-50 border border-amber-300 rounded-xl px-5 py-3 flex items-start gap-3">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+          <div>
+            <p class="text-sm font-black text-amber-800">URL Google Apps Script Belum Dikonfigurasi</p>
+            <p class="text-xs text-amber-700 mt-0.5">Buka fail <code class="bg-amber-100 px-1 rounded font-mono-custom">.html</code> ini dalam editor teks, cari <code class="bg-amber-100 px-1 rounded font-mono-custom">const GAS_URL = "GANTIKAN..."</code> dan gantikan dengan URL Web App anda. Data ditunjukkan adalah data contoh sahaja.</p>
+          </div>
+        </div>
+      </template>
+      <!-- Ralat sambungan -->
+      <template x-if="gasConfigured && syncError">
+        <div class="bg-red-50 border border-red-300 rounded-xl px-5 py-3 flex items-start gap-3">
+          <i data-lucide="wifi-off" class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"></i>
+          <div class="flex-1">
+            <p class="text-sm font-black text-red-800">Gagal Menghubungi Google Sheets</p>
+            <p class="text-xs text-red-700 mt-0.5">Semak URL GAS, pastikan deployment masih aktif dan CORS dibenarkan. Data contoh dipaparkan.</p>
+          </div>
+          <button @click="fetchFromCloud()" class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-black flex-shrink-0">Cuba Semula</button>
+        </div>
+      </template>
+    </div>
+
+    <!-- BANNER: Menyimpan ke Sheets -->
+    <div x-show="isSyncing" x-transition class="mb-4">
+      <div class="bg-blue-50 border border-blue-200 rounded-xl px-5 py-3 flex items-center gap-3">
+        <div class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
+        <p class="text-sm font-bold text-blue-700">Menyimpan data ke Google Sheets...</p>
+      </div>
+    </div>
+    
+    <!-- MENU NAVIGASI TAB -->
+    <div class="flex flex-wrap gap-2 mb-6 border-b border-slate-200 pb-3 items-center">
+      <button 
+        @click="activeTab = 'dashboard'; refreshIcons();"
+        :class="activeTab === 'dashboard' ? (appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? `${themeClasses[appConfig.temaWarna].bg} text-white shadow-md` : 'bg-blue-600 text-white') : 'text-slate-600 hover:bg-slate-200'"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase transition-all"
+      >
+        <i data-lucide="folder-open" class="w-4 h-4"></i> Pilih Program
+      </button>
+
+      <button 
+        @click="activeTab = 'form'; refreshIcons();"
+        :class="activeTab === 'form' ? (appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? `${themeClasses[appConfig.temaWarna].bg} text-white shadow-md` : 'bg-blue-600 text-white') : 'text-slate-600 hover:bg-slate-200'"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase transition-all"
+      >
+        <i data-lucide="plus-circle" class="w-4 h-4"></i> Isi Markah Pelatih
+      </button>
+      
+      <button 
+        @click="activeTab = 'list'; refreshIcons();"
+        :class="activeTab === 'list' ? (appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? `${themeClasses[appConfig.temaWarna].bg} text-white shadow-md` : 'bg-blue-600 text-white') : 'text-slate-600 hover:bg-slate-200'"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase transition-all relative"
+      >
+        <i data-lucide="list-filter" class="w-4 h-4"></i> Senarai Markah (<span x-text="getFilteredPelatihByProgram().length"></span>)
+      </button>
+      
+      <button 
+        @click="activeTab = 'analytics'; refreshIcons();"
+        :class="activeTab === 'analytics' ? (appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? `${themeClasses[appConfig.temaWarna].bg} text-white shadow-md` : 'bg-blue-600 text-white') : 'text-slate-600 hover:bg-slate-200'"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase transition-all"
+      >
+        <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Prestasi Kolej
+      </button>
+
+      <!-- Butang Pembuka Kabin Pentadbir -->
+      <button 
+        @click="triggerAdminAccess()"
+        :class="activeTab === 'admin' ? 'bg-rose-600 text-white shadow-md' : 'bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100'"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase transition-all ml-auto"
+      >
+        <i data-lucide="settings" class="w-4 h-4"></i> ADMIN SPMCA KV LIKAS
+      </button>
+
+      <!-- Butang Log Keluar Dinamik -->
+      <button 
+        x-show="isAdminUnlocked"
+        @click="logoutAdmin()"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase bg-red-600 text-white hover:bg-red-700 transition-all shadow-md ml-2"
+      >
+        <i data-lucide="log-out" class="w-4 h-4"></i> Log Keluar
+      </button>
+    </div>
+
+    <!-- TAB 0: PILIH PROGRAM -->
+    <div x-show="activeTab === 'dashboard'" class="space-y-6">
+      <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 class="text-xl font-extrabold">Selamat Datang, Tenaga Pengajar Core Abilities</h2>
+          <p class="text-xs text-slate-400 mt-1 max-w-2xl">
+            Uruskan data pelatih, masukkan markah JPK Core Abilities Tahap 1, dan jana slip keputusan yang bersedia untuk dicetak.
+          </p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span class="text-[11px] bg-slate-800 px-3 py-1 rounded-md text-slate-300">
+              Jumlah Berdaftar: <strong x-text="`${pelatihList.length} Orang`"></strong>
+            </span>
+            <span class="text-[11px] bg-emerald-950 px-3 py-1 rounded-md text-emerald-400 font-semibold">
+              Kadar Kelulusan: <strong x-text="`${calculateOverallStats().kadarLulus}%`"></strong>
+            </span>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2 w-full md:w-auto" x-show="gasConfigured">
+          <button @click="fetchFromCloud()" :disabled="isSyncing" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md">
+            <i data-lucide="refresh-cw" class="w-4 h-4" :class="isSyncing ? 'animate-spin' : ''"></i> Segerak Google Sheets
+          </button>
+        </div>
+      </div>
+
+      <!-- GRID PROGRAM -->
+      <div>
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-xs font-bold uppercase text-slate-400 tracking-wider">PILIH PROGRAM / BIDANG KURSUS</h3>
+          <button
+            @click="selectedProgramId = 'SEMUA'; activeTab = 'list'; refreshIcons();"
+            class="text-xs text-blue-600 hover:underline font-bold"
+          >
+            Lihat Semua Pelatih Sekaligus
+          </button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <template x-for="prg in programsList" :key="prg.id">
+            <div 
+              @click="selectedProgramId = prg.id; triggerNotice(`Tukar program aktif ke: ${prg.code}`)"
+              :class="selectedProgramId === prg.id ? (appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? `${themeClasses[appConfig.temaWarna].border} ${themeClasses[appConfig.temaWarna].bgLight} ring-2 ring-offset-2 ring-blue-500 shadow-md` : 'border-blue-200 bg-blue-50') : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-lg'"
+              class="cursor-pointer p-5 rounded-2xl border transition-all flex flex-col justify-between h-44"
+            >
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <span 
+                    :class="selectedProgramId === prg.id ? (appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? `${themeClasses[appConfig.temaWarna].bg} text-white` : 'bg-blue-600 text-white') : 'bg-slate-100 text-slate-700'"
+                    class="text-[11px] font-black uppercase px-2 py-0.5 rounded"
+                    x-text="prg.code"
+                  ></span>
+                  <span class="text-[10px] text-slate-400 font-bold font-mono-custom" x-text="`${getStudentCountForProgram(prg.id)} Pelatih`"></span>
+                </div>
+                <h4 class="font-bold text-xs text-slate-800 line-clamp-2 uppercase mt-2" x-text="prg.name"></h4>
+              </div>
+
+              <div class="pt-3 border-t border-slate-150/50 flex justify-between items-center">
+                <span class="text-[10px] text-slate-500">
+                  Kadar Lulus: <strong x-text="`${getPassRateForProgram(prg.id)}%`"></strong>
+                </span>
+                
+                <button
+                  @click.stop="selectedProgramId = prg.id; activeTab = 'form'; refreshIcons();"
+                  :class="selectedProgramId === prg.id ? (appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? `${themeClasses[appConfig.temaWarna].bg} text-white` : 'bg-blue-600 text-white') : 'bg-slate-800 text-white'"
+                  class="text-[10px] font-bold py-1 px-2.5 rounded-md flex items-center gap-0.5"
+                >
+                  Isi Markah <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: ISI MARKAH PELATIH -->
+    <div x-show="activeTab === 'form'" class="space-y-6">
+      
+      <!-- BANNER AMARAN AKSES MODUL DINYAHAKTIFKAN -->
+      <div x-show="!appConfig.isInputActive" class="bg-rose-50 border-2 border-rose-200 p-5 rounded-2xl flex items-start gap-4 shadow-md">
+        <div class="bg-rose-100 text-rose-600 p-2.5 rounded-xl flex-shrink-0">
+          <i data-lucide="lock" class="w-6 h-6 animate-pulse"></i>
+        </div>
+        <div>
+          <h4 class="text-xs font-black text-rose-800 uppercase tracking-wider">Modul Pengisian Markah Dikunci (Mod Baca Sahaja)</h4>
+          <p class="text-[11px] text-rose-700 mt-1 leading-relaxed">
+            Pihak pentadbir (Admin) telah menonaktifkan fungsi pengisian dan pengeditan markah. Anda hanya boleh memilih calon sedia ada dan melihat rekod pemarkahan mereka sahaja. Sebarang penyimpanan atau pendaftaran baru adalah disekat.
+          </p>
+        </div>
+      </div>
+
+      <!-- WAJIB: IDENTITI PENGATUR TENAGA PENJAGAR -->
+      <div class="bg-amber-50 border border-amber-200 p-5 rounded-2xl space-y-2 shadow-sm">
+        <div class="flex items-center gap-2 text-amber-800">
+          <i data-lucide="users" class="w-5 h-5"></i>
+          <h3 class="text-xs font-black uppercase tracking-wider">Tenaga Pengajar (Wajib Diisi Sebelum Merekod)</h3>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1">NAMA TENAGA PENGAJAR / PP</label>
+            <input 
+              type="text" 
+              x-model="tenagaPengajar"
+              @input="saveInstructor()"
+              :disabled="!appConfig.isInputActive"
+              placeholder="CTH: SYAFIQ BIN ABDULLAH (PP)"
+              class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-black uppercase focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+              :class="!appConfig.isInputActive ? 'bg-slate-100 cursor-not-allowed text-slate-450' : 'bg-white'"
+            />
+          </div>
+          <div class="text-[11px] text-slate-500 italic pb-2">
+            * Nama anda akan direkodkan secara automatik ke dalam data dan disimpan ke dalam Google Sheets.
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 text-white p-4 rounded-xl flex justify-between items-center gap-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="folder-open" class="text-yellow-400 w-5 h-5"></i>
+          <span class="text-xs font-bold">
+            Program Aktif Semasa: <strong class="text-yellow-300 uppercase" x-text="`${getActiveProgramDetails().code} - ${getActiveProgramDetails().name}`"></strong>
+          </span>
+        </div>
+        <button 
+          @click="activeTab = 'dashboard'; refreshIcons();"
+          class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold py-1 px-2.5 rounded"
+        >
+          Tukar Program
+        </button>
+      </div>
+
+      <!-- PILIHAN KAEDAH MEMILIH CALON MANUAL -->
+      <div 
+        class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4"
+        :class="!tenagaPengajar.trim() ? 'opacity-50 pointer-events-none select-none relative' : ''"
+      >
+        <template x-if="!tenagaPengajar.trim()">
+          <div class="absolute inset-0 bg-slate-100/50 rounded-2xl flex items-center justify-center z-10">
+            <span class="bg-red-600 text-white font-black text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg">
+              <i data-lucide="alert-triangle" class="w-4 h-4"></i> SILA ISI NAMA TENAGA PENGAJAR TERLEBIH DAHULU!
+            </span>
+          </div>
+        </template>
+
+        <h3 class="text-xs font-black uppercase tracking-wider text-slate-400 pb-1 border-b">
+          Kaedah Pemilihan Calon Pelatih
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <!-- Pilihan Calon Sedia Ada (Kini di Sebelah Kiri / Pertama) -->
+          <div 
+            @click="setFormMethod('existing')"
+            :class="formMethod === 'existing' ? 'border-2 border-blue-500 bg-blue-50/50 ring-2 ring-blue-200 shadow-md' : 'border border-slate-200 hover:border-blue-300 hover:shadow-sm'"
+            class="cursor-pointer p-4 rounded-xl transition-all flex items-start gap-3"
+          >
+            <div :class="formMethod === 'existing' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500'" class="p-2 rounded-lg">
+              <i data-lucide="user-check" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h4 class="text-xs font-black text-slate-800 uppercase">Pilih Calon Sedia Ada dari Program</h4>
+              <p class="text-[10px] text-slate-500 mt-0.5">Pilih pelatih berdaftar dalam program aktif untuk mengemas kini atau mengisi markah.</p>
+            </div>
+          </div>
+
+          <!-- Pilihan Daftar Baru secara Manual (Kini di Sebelah Kanan / Kedua) -->
+          <div 
+            @click="appConfig.isInputActive ? setFormMethod('new') : triggerNotice('Fungsi draf calon baharu dinyahaktifkan oleh Admin!', 'error')"
+            :class="[
+              formMethod === 'new' && appConfig.isInputActive ? 'border-2 border-blue-500 bg-blue-50/50 ring-2 ring-blue-200 shadow-md' : 'border border-slate-200',
+              appConfig.isInputActive ? 'cursor-pointer hover:border-blue-300 hover:shadow-sm' : 'opacity-50 cursor-not-allowed bg-slate-50'
+            ]"
+            class="p-4 rounded-xl transition-all flex items-start gap-3"
+          >
+            <div :class="formMethod === 'new' && appConfig.isInputActive ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500'" class="p-2 rounded-lg">
+              <i data-lucide="user-plus" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h4 class="text-xs font-black text-slate-800 uppercase">Daftar Calon Baharu (Manual)</h4>
+              <p class="text-[10px] text-slate-500 mt-0.5">Daftarkan profil calon pelatih baharu secara langsung dan isikan skor markahnya.</p>
+            </div>
+          </div>
+
+          <!-- Pilihan Rekod Pukal CSV (Baharu) -->
+          <div 
+            @click="appConfig.isInputActive ? setFormMethod('csv') : triggerNotice('Fungsi draf pukal dinyahaktifkan oleh Admin!', 'error')"
+            :class="[
+              formMethod === 'csv' && appConfig.isInputActive ? 'border-2 border-blue-500 bg-blue-50/50 ring-2 ring-blue-200 shadow-md' : 'border border-slate-200',
+              appConfig.isInputActive ? 'cursor-pointer hover:border-blue-300 hover:shadow-sm' : 'opacity-50 cursor-not-allowed bg-slate-50'
+            ]"
+            class="p-4 rounded-xl transition-all flex items-start gap-3"
+          >
+            <div :class="formMethod === 'csv' && appConfig.isInputActive ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500'" class="p-2 rounded-lg">
+              <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h4 class="text-xs font-black text-slate-800 uppercase">Rekod Pukal (CSV)</h4>
+              <p class="text-[10px] text-slate-500 mt-0.5">Muat turun senarai fail pelajar, isi markah melalui Excel, dan muat naik semula.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dropdown pilihan bagi Calon Sedia Ada -->
+        <div x-show="formMethod === 'existing'" x-transition class="space-y-1.5 pt-3 border-t border-slate-150">
+          <label class="block text-[11px] font-black text-slate-600">Pilih Pelatih Aktif:</label>
+          <select 
+            x-model="selectedTraineeIdToScore"
+            @change="loadTraineeToScore($event.target.value)"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-slate-700"
+          >
+            <option value="">-- Sila Pilih Pelatih dari Senarai Program --</option>
+            <template x-for="p in getFilteredPelatihByProgram()" :key="p.id">
+              <option :value="p.id" x-text="`${p.nama} (${p.angkaGiliran || 'No Giliran Kosong'})`"></option>
+            </template>
+          </select>
+        </div>
+      </div>
+
+      <!-- BORANG MANUAL -->
+      <div 
+        x-show="formMethod !== 'csv'"
+        class="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans relative"
+        :class="!tenagaPengajar.trim() ? 'opacity-50 pointer-events-none select-none' : ''"
+      >
+        <template x-if="!tenagaPengajar.trim()">
+          <div class="absolute inset-0 bg-slate-100/50 rounded-2xl flex items-center justify-center z-10 font-sans"></div>
+        </template>
+
+        <!-- KIRI: BORANG INPUT MANUAL -->
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center">
+            <h3 class="font-bold flex items-center gap-2 text-xs uppercase">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              <span x-text="editingId ? 'KEMASKINI SKOR CALON PELATIH' : 'DAFTAR & ISI MARKAH CALON MANUAL'"></span>
+            </h3>
+            <button 
+              x-show="editingId && appConfig.isInputActive"
+              @click="cancelEdit()"
+              class="text-[10px] bg-slate-700 py-1 px-2.5 rounded text-slate-300 animate-pulse"
+            >
+              Batal Kemaskini
+            </button>
+          </div>
+
+          <form @submit.prevent="saveScoreForm()" class="p-6 space-y-6">
+            
+            <!-- Identiti Calon -->
+            <div>
+              <h4 class="text-xs font-black uppercase tracking-wider text-slate-400 pb-1 border-b mb-3 flex justify-between items-center">
+                <span>Identiti Calon Pelatih</span>
+                <span x-show="formMethod === 'existing'" class="text-[10px] bg-blue-100 text-blue-700 font-extrabold px-2 py-0.5 rounded uppercase">Pelatih Sedia Ada (Dilindungi)</span>
+              </h4>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-[11px] font-black text-slate-600 mb-1">Nama Penuh Calon</label>
+                  <input 
+                    type="text" 
+                    required
+                    x-model="formNama"
+                    :readonly="formMethod === 'existing' || !appConfig.isInputActive"
+                    :class="(formMethod === 'existing' || !appConfig.isInputActive) ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white'"
+                    placeholder="NAMA PENUH SEPERTI DALAM MYKAD"
+                    class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:outline-none uppercase text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-black text-slate-600 mb-1">No. Angka Giliran</label>
+                  <input 
+                    type="text" 
+                    required
+                    x-model="formAngkaGiliran"
+                    :readonly="formMethod === 'existing' || !appConfig.isInputActive"
+                    :class="(formMethod === 'existing' || !appConfig.isInputActive) ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed font-mono-custom' : 'bg-white font-mono-custom'"
+                    placeholder="Cth: K05037/24/001"
+                    class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:outline-none uppercase text-xs font-bold tracking-wider"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-black text-slate-600 mb-1">No. Kad Pengenalan (MyKad)</label>
+                  <input 
+                    type="text" 
+                    required
+                    maxlength="12"
+                    x-model="formIc"
+                    :readonly="formMethod === 'existing' || !appConfig.isInputActive"
+                    :class="(formMethod === 'existing' || !appConfig.isInputActive) ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed font-mono-custom' : 'bg-white font-mono-custom'"
+                    @input="formIc = formIc.replace(/[^0-9]/g, '')"
+                    placeholder="Cth: 080210120899"
+                    class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:outline-none text-xs font-bold tracking-wider"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Skor Abilities -->
+            <div>
+              <h4 class="text-xs font-black uppercase tracking-wider text-slate-400 pb-1 border-b mb-4">
+                Skor Setiap Core Abilities (Wajaran Maksimum 20)
+              </h4>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" x-show="appConfig && appConfig.abilities">
+                <template x-for="ab in appConfig.abilities" :key="ab.id">
+                  <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div class="flex justify-between items-center mb-2">
+                      <span class="text-[10px] font-black px-2 py-0.5 bg-slate-200 text-slate-800 rounded" x-text="ab.code"></span>
+                      <span class="text-[10px] text-slate-400 font-bold truncate max-w-[150px]" :title="ab.name" x-text="ab.name"></span>
+                    </div>
+
+                    <!-- Input Nombor Berwajaran Terus Untuk Semua CA (Maksimum 20) -->
+                    <div>
+                      <label class="block text-[11px] text-slate-600 mb-1" x-text="`Markah Diperolehi (Maks ${ab.max}):`"></label>
+                      <input 
+                        type="number"
+                        min="0"
+                        :max="ab.max"
+                        step="any"
+                        x-model="formScores[ab.id]"
+                        :disabled="!appConfig.isInputActive"
+                        :class="!appConfig.isInputActive ? 'bg-slate-100 cursor-not-allowed text-slate-400' : 'bg-white'"
+                        class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 font-mono-custom"
+                      />
+                    </div>
+
+                    <!-- Input Tarikh Penilaian Terbina khas untuk CA04 -->
+                    <template x-if="ab.id === appConfig.abilities[appConfig.abilities.length - 1].id">
+                      <div class="mt-3 pt-3 border-t border-slate-200">
+                        <label class="block text-[10px] font-black text-rose-600 mb-1">TARIKH PENILAIAN (WAJIB)</label>
+                        <input 
+                          type="date"
+                          required
+                          x-model="formTarikhCA04"
+                          :disabled="!appConfig.isInputActive"
+                          :class="!appConfig.isInputActive ? 'bg-slate-150 cursor-not-allowed text-slate-400' : 'bg-white'"
+                          class="w-full px-3 py-1.5 border border-rose-300 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono-custom"
+                        />
+                      </div>
+                    </template>
+
+                    <!-- Had Peratus Secara Dinamik -->
+                    <div class="mt-2 pt-2 border-t border-slate-200 space-y-1">
+                      <div class="flex justify-between text-[10px] font-mono-custom">
+                        <span class="text-slate-400">Nilai Peratus Modul:</span>
+                        <span class="font-extrabold text-blue-600" x-text="`${calculateModulePercentage(ab)}%`"></span>
+                      </div>
+                      <div class="flex justify-between text-[10px]">
+                        <span class="text-slate-400" x-text="`Sasaran Min: ${ab.minPass}`"></span>
+                        <span 
+                          :class="getModuleScore(ab) >= ab.minPass ? 'text-emerald-600' : 'text-red-500'"
+                          class="font-bold" 
+                          x-text="getModuleScore(ab) >= ab.minPass ? 'LULUS MODUL' : 'BELUM CAPAI'"
+                        ></span>
+                      </div>
+                    </div>
+
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+              <button 
+                type="button" 
+                @click="clearForm()"
+                :disabled="!appConfig.isInputActive"
+                class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-50"
+              >
+                Kosongkan
+              </button>
+              
+              <!-- Tunjukkan butang simpan hanya jika modul aktif -->
+              <button 
+                type="submit"
+                x-show="appConfig.isInputActive"
+                class="px-5 py-2 text-xs font-black text-white rounded-lg shadow-md flex items-center gap-1.5"
+                :class="appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? themeClasses[appConfig.temaWarna].bg : 'bg-blue-600'"
+              >
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                <span x-text="editingId ? 'Kemaskini Rekod' : 'Simpan Markah & Penyelarasan'"></span>
+              </button>
+
+              <!-- Placeholder butang terkunci sekiranya dinyahaktifkan -->
+              <button 
+                type="button"
+                x-show="!appConfig.isInputActive"
+                disabled
+                class="px-5 py-2 text-xs font-black text-slate-400 bg-slate-200 rounded-lg cursor-not-allowed flex items-center gap-1.5"
+              >
+                <i data-lucide="lock" class="w-4 h-4"></i>
+                <span>Modul Dikunci</span>
+              </button>
+            </div>
+
+          </form>
+        </div>
+
+        <!-- KANAN: PREVIEW RUMUSAN -->
+        <div class="space-y-4">
+          <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-xl border border-slate-800">
+            <h4 class="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-2 mb-4">
+              Kalkulator JPK (Live)
+            </h4>
+
+            <div class="space-y-4 text-xs">
+              <div class="flex justify-between">
+                <span class="text-slate-400">Calon Pelatih:</span>
+                <span class="font-extrabold uppercase truncate max-w-[150px]" x-text="formNama.trim() ? formNama : 'N/A'"></span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Angka Giliran:</span>
+                <span class="font-extrabold uppercase truncate max-w-[150px] text-yellow-400" x-text="formAngkaGiliran.trim() ? formAngkaGiliran : 'N/A'"></span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Program:</span>
+                <span class="font-extrabold text-slate-200 uppercase truncate max-w-[150px]" x-text="getActiveProgramDetails().code"></span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Tenaga Pengajar:</span>
+                <span class="font-extrabold text-yellow-400 uppercase truncate max-w-[150px]" x-text="tenagaPengajar || 'TIADA'"></span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Jumlah Skor:</span>
+                <span class="font-black text-yellow-400 text-sm font-mono-custom" x-text="`${calculateLiveTotals().jumlah.toFixed(0)} / ${calculateLiveTotals().maxMaksimum}`"></span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Markah Purata %:</span>
+                <span class="font-black text-blue-400 text-sm font-mono-custom" x-text="`${calculateLiveTotals().peratus.toFixed(0)}%`"></span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-400">Keputusan Kompetensi:</span>
+                <span 
+                  :class="calculateLiveTotals().gred === 'LULUS' ? 'bg-emerald-600' : 'bg-red-600'"
+                  class="font-extrabold text-xs px-2 py-0.5 rounded text-white" 
+                  x-text="calculateLiveTotals().gred"
+                ></span>
+              </div>
+
+              <div 
+                :class="calculateLiveTotals().keputusan === 'LULUS' ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-red-500/10 border-red-500 text-red-400'"
+                class="p-4 rounded-xl border flex flex-col items-center justify-center text-center transition-colors duration-300"
+              >
+                <span class="text-[10px] font-bold tracking-widest uppercase mb-1">Status Kelayakan</span>
+                <span class="text-2xl font-black" x-text="calculateLiveTotals().keputusan"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- KAWASAN KEMASUKAN MARKAH PUKAL (CSV) UNTUK PENGAJAR -->
+      <div 
+        x-show="formMethod === 'csv'" 
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-y-4"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        class="bg-white rounded-2xl border border-slate-200 shadow-sm relative font-sans overflow-hidden"
+        :class="!tenagaPengajar.trim() ? 'opacity-50 pointer-events-none select-none' : ''"
+      >
+        <template x-if="!tenagaPengajar.trim()">
+          <div class="absolute inset-0 bg-slate-100/50 flex items-center justify-center z-10 font-sans"></div>
+        </template>
+        
+        <div class="bg-slate-800 text-white px-6 py-4 border-b">
+          <h3 class="font-black text-emerald-400 text-xs flex items-center gap-2 uppercase">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+            PENGURUSAN MARKAH PUKAL (OFFLINE / EXCEL)
+          </h3>
+        </div>
+
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Langkah 1: Muat Turun -->
+          <div class="bg-blue-50 border border-blue-200 p-6 rounded-xl text-center space-y-4">
+            <div class="bg-blue-100 text-blue-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 font-black text-xl shadow-sm">1</div>
+            <h4 class="font-black text-slate-800 text-sm uppercase">Dapatkan Templat CSV Program</h4>
+            <p class="text-xs text-slate-500 leading-relaxed">
+              Muat turun fail CSV yang mengandungi <b>senarai nama pelatih</b> bagi program <strong x-text="getActiveProgramDetails().code"></strong>. <span class="text-rose-600 font-bold">Lajur markah dikosongkan</span> — sila isi nilai markah setiap CA dalam Excel, kemudian simpan semula sebagai .csv.
+            </p>
+            <button 
+              @click="downloadInstructorCSVTemplate()" 
+              class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-md flex items-center justify-center gap-2 mx-auto w-full max-w-xs transition-all"
+            >
+              <i data-lucide="download" class="w-4 h-4"></i> Muat Turun CSV Calon (Kosong)
+            </button>
+          </div>
+
+          <!-- Langkah 2: Muat Naik -->
+          <div class="bg-emerald-50 border border-emerald-200 p-6 rounded-xl text-center space-y-4 relative">
+            <div class="bg-emerald-100 text-emerald-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 font-black text-xl shadow-sm">2</div>
+            <h4 class="font-black text-slate-800 text-sm uppercase">Muat Naik CSV Yang Lengkap</h4>
+            <p class="text-xs text-slate-500 leading-relaxed">
+              Selepas markah diisi dalam Excel, simpan sebagai .csv dan muat naik di sini. <span class="text-rose-600 font-bold">Sistem akan meminta anda memasukkan Tarikh Akhir Penilaian</span> sebelum data diproses.
+            </p>
+
+            <div class="relative mt-2">
+              <input 
+                type="file" 
+                accept=".csv" 
+                @change="handleInstructorCSVImport($event)" 
+                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+              />
+              <button class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-md flex items-center justify-center gap-2 mx-auto w-full max-w-xs transition-all">
+                <i data-lucide="upload" class="w-4 h-4"></i> Pilih Fail & Muat Naik
+              </button>
+            </div>
+            <!-- Petunjuk Aliran Wajib -->
+            <div class="mt-2 flex items-center justify-center gap-1.5 text-[10px] text-rose-600 font-bold">
+              <i data-lucide="calendar-check" class="w-3.5 h-3.5"></i>
+              Tarikh Penilaian Akhir WAJIB diisi selepas fail dipilih
+            </div>
+          </div>
+        </div>
+        
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-500 font-bold flex items-start gap-2">
+          <i data-lucide="info" class="w-4 h-4 flex-shrink-0 text-blue-500"></i>
+          <span><b>Nota Pintar:</b> Sistem akan mengimbas No. Kad Pengenalan pelatih di dalam fail CSV. Jika MyKad tersebut sudah wujud, markah lama akan <b>dikemaskini</b>. Jika MyKad tersebut baru, sistem akan <b>mendaftarkan profil pelatih tersebut secara automatik</b>. Tarikh Penilaian Akhir yang dimasukkan melalui tetingkap pengesahan akan digunakan sebagai tarikh rasmi bagi <b>semua</b> pelatih dalam fail tersebut.</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 2: SENARAI JADUAL PEMARKAHAN -->
+    <div x-show="activeTab === 'list'" class="space-y-4 font-sans">
+      
+      <!-- TOOLBAR SENARAI -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row gap-3 justify-between items-center shadow-sm">
+        <div class="flex items-center gap-2 w-full md:w-auto">
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Program:</span>
+          <select 
+            x-model="selectedProgramId"
+            @change="refreshIcons()"
+            class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-bold bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700"
+          >
+            <!-- Saringan Semua Program hanya ditunjukkan jika Admin dinyahkunci -->
+            <template x-if="isAdminUnlocked">
+              <option value="SEMUA">📊 SEMUA PROGRAM SEKALIGUS</option>
+            </template>
+            <template x-for="p in programsList" :key="p.id">
+              <option :value="p.id" x-text="`${p.code} - ${p.name}`"></option>
+            </template>
+          </select>
+        </div>
+
+        <div class="relative w-full md:w-64">
+          <i data-lucide="search" class="absolute left-3 top-2.5 text-slate-400 w-4 h-4"></i>
+          <input 
+            type="text" 
+            x-model="searchQuery"
+            placeholder="Cari nama, MyKad atau giliran..."
+            class="w-full pl-9 pr-4 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:outline-none bg-white text-slate-800"
+          />
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+          <!-- Penapis Status Aktif Pelatih -->
+          <select 
+            x-model="filterStatusAktif"
+            @change="refreshIcons()"
+            class="px-2 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-700 font-bold"
+          >
+            <option value="AKTIF">🟢 Pelatih Aktif</option>
+            <option value="SEMUA">👁 Semua Status</option>
+            <option value="BERHENTI">🔴 Berhenti</option>
+            <option value="PINDAH">🟡 Pindah</option>
+          </select>
+
+          <select 
+            x-model="filterKeputusan" 
+            class="px-2 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-700"
+          >
+            <option value="SEMUA">Semua Keputusan</option>
+            <option value="LULUS">LULUS</option>
+            <option value="GAGAL">GAGAL</option>
+            <option value="BELUM DINILAI">BELUM DINILAI</option>
+          </select>
+
+          <button 
+            @click="handleExportCSV()"
+            class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black py-1.5 px-3 rounded-lg flex items-center gap-1 shadow-sm"
+          >
+            <i data-lucide="download" class="w-4 h-4"></i> Muat Turun CSV / Excel
+          </button>
+
+          <!-- Butang Cetak Jadual Program Baharu -->
+          <button 
+            @click="cetakJadualMarkah()"
+            class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black py-1.5 px-3 rounded-lg flex items-center gap-1 shadow-sm"
+          >
+            <i data-lucide="printer" class="w-4 h-4"></i> Cetak Jadual
+          </button>
+        </div>
+      </div>
+
+      <!-- JADUAL JPK DENGAN SEMPADAN TEBAL -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs table-thick-borders">
+            <thead>
+              <!-- Aras 1: Banner Penyelarasan Penuh Dinamik -->
+              <tr class="bg-slate-900 text-white text-[11px] uppercase tracking-wider font-extrabold">
+                <th :colspan="appConfig.abilities ? appConfig.abilities.length + 10 : 14" class="py-3 px-4 text-center bg-slate-900 text-yellow-300 border-b border-slate-700">
+                  RUMUSAN REKOD MARKAH CORE ABILITIES <span x-text="appConfig.tahap.toUpperCase()"></span>, <span x-text="appConfig.pusatBertauliah"></span>. KOHORT <span x-text="appConfig.kohort"></span>
+                </th>
+              </tr>
+              <!-- Aras 2: Label kumpulan coptpa & kappa -->
+              <tr class="bg-slate-800 text-white text-[10px] uppercase tracking-wider font-semibold">
+                <th class="py-3 px-4 text-center border-b border-slate-700 bg-slate-800" rowspan="2">Bil</th>
+                <th class="py-3 px-4 border-b border-slate-700 bg-slate-800" rowspan="2">Nama Pelatih</th>
+                <th class="py-3 px-4 border-b border-slate-700 bg-slate-800" rowspan="2">No. Angka Giliran</th>
+                <th class="py-3 px-4 border-b border-slate-700 bg-slate-800" rowspan="2">No. MyKad</th>
+                <th class="py-3 px-4 text-center border-x border-slate-700 bg-slate-800 border-b border-slate-700" rowspan="2">Program</th>
+                <th class="py-1.5 px-4 text-center bg-slate-700 text-slate-300 font-bold border-r border-b border-slate-600" :colspan="appConfig.abilities ? appConfig.abilities.length + 2 : 6">coptpa</th>
+                <th class="py-1.5 px-4 text-center bg-slate-700 text-slate-300 font-bold border-l border-b border-slate-600" colspan="2">kappa</th>
+                <th class="py-1.5 px-4 text-center bg-slate-700 text-slate-300 font-bold border-l border-b border-slate-600">—</th>
+              </tr>
+              <!-- Aras 3: CA, Standard Modul & Tindakan (semua dalam satu baris, tiada rowspan) -->
+              <tr class="bg-slate-700 text-white text-[10px] uppercase tracking-wider font-semibold">
+                <template x-for="ab in appConfig.abilities" :key="ab.id">
+                  <th class="py-3 px-3 text-center border-r border-slate-600 bg-slate-700" x-text="`${ab.code} (Skor / 100%)`"></th>
+                </template>
+                <th class="py-3 px-4 text-center border-r border-slate-600 bg-slate-700">Jumlah (<span x-text="getTotalMaxScore()"></span>)</th>
+                <th class="py-3 px-4 text-center border-r border-slate-600 bg-slate-700">Keputusan</th>
+                <th class="py-3 px-4 text-center border-r border-slate-600 bg-slate-700">Peratus %</th>
+                <th class="py-3 px-4 text-center bg-slate-700">Keputusan Kompetensi</th>
+                <th class="py-3 px-4 text-center bg-slate-800 font-bold uppercase">Tindakan</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 font-medium text-slate-700">
+              <!-- Notis pelatih tidak aktif (tunjuk jika ada) -->
+              <template x-if="filterStatusAktif === 'AKTIF' && pelatihList.filter(p => p.programId === selectedProgramId && p.statusAktif && p.statusAktif !== 'AKTIF').length > 0">
+                <tr class="no-print">
+                  <td :colspan="11 + (appConfig.abilities ? appConfig.abilities.length : 4)" class="px-4 py-2 bg-amber-50 border-b border-amber-200">
+                    <div class="flex items-center gap-2 text-amber-700 text-[11px] font-bold">
+                      <i data-lucide="info" class="w-4 h-4 flex-shrink-0"></i>
+                      <span>
+                        Terdapat 
+                        <strong x-text="pelatihList.filter(p => p.programId === selectedProgramId && p.statusAktif && p.statusAktif !== 'AKTIF').length"></strong> 
+                        pelatih tidak aktif (berhenti/pindah) tersembunyi dari paparan ini. Statistik kadar lulus dikira berdasarkan pelatih aktif sahaja.
+                        <button @click="filterStatusAktif = 'SEMUA'; refreshIcons()" class="ml-2 underline font-black hover:text-amber-900">Papar Semua →</button>
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+
+              <template x-if="getFilteredList().length === 0">
+                <tr>
+                  <td :colspan="11 + (appConfig.abilities ? appConfig.abilities.length : 4)" class="py-12 text-center text-slate-400">
+                    <p class="mb-2 font-bold">Tiada rekod pelatih tersimpan bagi program ini.</p>
+                    <button 
+                      @click="loadSampleData()"
+                      class="px-4 py-1.5 bg-slate-100 border border-slate-200 hover:bg-slate-200 rounded text-[11px] font-bold text-slate-700"
+                    >
+                      Muatkan Sampel Tempatan KV Likas
+                    </button>
+                  </td>
+                </tr>
+              </template>
+              
+              <template x-for="(p, idx) in getFilteredList()" :key="p.id">
+                <tr class="hover:bg-slate-50 transition-colors">
+                  <td class="py-3 px-4 text-center font-mono-custom text-slate-400" x-text="idx + 1"></td>
+                  <td class="py-3 px-4 font-black text-slate-900 uppercase">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <span x-text="p.nama"></span>
+                      <template x-if="p.statusAktif === 'BERHENTI'">
+                        <span class="inline-block text-[8px] font-black px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 tracking-wider uppercase whitespace-nowrap">BERHENTI</span>
+                      </template>
+                      <template x-if="p.statusAktif === 'PINDAH'">
+                        <span class="inline-block text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200 tracking-wider uppercase whitespace-nowrap">PINDAH</span>
+                      </template>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4 font-mono-custom text-xs uppercase text-slate-900 font-bold" x-text="p.angkaGiliran || '-'"></td>
+                  <td class="py-3 px-4 font-mono-custom text-xs" x-text="p.ic"></td>
+                  <td class="py-3 px-4 text-center font-black text-blue-600 bg-blue-50/50" x-text="getProgramCode(p.programId)"></td>
+                  
+                  <!-- Nilai Markah Secara Dinamik -->
+                  <template x-for="ab in appConfig.abilities" :key="ab.id">
+                    <td class="py-3 px-3 text-center border-x" :class="(p.scores[ab.id] || 0) >= ab.minPass ? 'text-slate-800' : 'text-red-600 bg-red-50'">
+                      <div class="font-extrabold font-mono-custom text-slate-900" x-text="(p.scores[ab.id] || 0).toFixed(0)"></div>
+                      <div class="text-[10px] text-blue-600 font-bold font-mono-custom" x-text="`(${(( (p.scores[ab.id] || 0) / ab.max) * 100).toFixed(0)}%)`"></div>
+                      <!-- Status Kelayakan Modul Modular JPK LULUS / GAGAL 60% -->
+                      <div class="mt-1">
+                        <span 
+                          :class="(p.scores[ab.id] || 0) >= (ab.max * 0.6) ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-red-100 text-red-800 border-red-200'"
+                          class="inline-block px-1.5 py-0.2 rounded text-[8px] font-bold border tracking-wider"
+                          x-text="(p.scores[ab.id] || 0) >= (ab.max * 0.6) ? 'LULUS' : 'GAGAL'"
+                        ></span>
+                      </div>
+                    </td>
+                  </template>
+
+                  <!-- Jumlah (80) - di bawah coptpa -->
+                  <td class="py-3 px-4 text-center font-bold font-mono-custom text-slate-900 bg-slate-50" x-text="p.jumlah.toFixed(0)"></td>
+
+                  <!-- Keputusan - di bawah coptpa (dipindahkan bersebelahan Jumlah (80)) -->
+                  <td class="py-3 px-4 text-center">
+                    <span 
+                      :class="p.keputusan === 'LULUS'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        : p.keputusan === 'BELUM DINILAI'
+                          ? 'bg-slate-100 text-slate-500 border-slate-300'
+                          : 'bg-red-100 text-red-800 border-red-200'"
+                      class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border" 
+                      x-text="p.keputusan"
+                    ></span>
+                  </td>
+
+                  <!-- Peratus % - di bawah kappa -->
+                  <td class="py-3 px-4 text-center bg-blue-50/50">
+                    <span class="font-extrabold font-mono-custom text-blue-700 text-sm" x-text="`${p.peratus.toFixed(0)}%`"></span>
+                  </td>
+
+                  <!-- Keputusan Kompetensi - di bawah kappa -->
+                  <td class="py-3 px-4 text-center font-bold text-[10px]" 
+                      :class="p.gred === 'LULUS' ? 'text-emerald-700 font-extrabold' : (p.keputusan === 'BELUM DINILAI' ? 'text-slate-400' : 'text-red-600 font-extrabold')"
+                      x-text="p.keputusan === 'BELUM DINILAI' ? '—' : p.gred"></td>
+                  
+                  <!-- Tindakan -->
+                  <td class="py-3 px-4 text-center">
+                    <div class="flex flex-col items-center gap-1.5">
+
+                      <!-- Baris 1: Dropdown Status Aktif -->
+                      <select 
+                        :value="p.statusAktif || 'AKTIF'"
+                        @change="tukarStatusAktif(p, $event.target.value)"
+                        :class="{
+                          'bg-emerald-50 text-emerald-700 border-emerald-300': (p.statusAktif || 'AKTIF') === 'AKTIF',
+                          'bg-red-50 text-red-700 border-red-300': p.statusAktif === 'BERHENTI',
+                          'bg-amber-50 text-amber-700 border-amber-300': p.statusAktif === 'PINDAH'
+                        }"
+                        class="text-[10px] font-black border rounded-lg px-2 py-1 w-full max-w-[100px] focus:outline-none cursor-pointer"
+                        title="Tukar Status Pelatih"
+                      >
+                        <option value="AKTIF">🟢 AKTIF</option>
+                        <option value="BERHENTI">🔴 BERHENTI</option>
+                        <option value="PINDAH">🟡 PINDAH</option>
+                      </select>
+
+                      <!-- Baris 2: Butang Cetak & Edit -->
+                      <div class="flex items-center justify-center gap-1">
+                        <!-- Cetak Slip -->
+                        <button @click="cetakSlipPelatih(p)" class="p-1 text-emerald-600 hover:bg-emerald-50 rounded" title="Cetak Slip">
+                          <i data-lucide="printer" class="w-4 h-4"></i>
+                        </button>
+
+                        <!-- Edit (HANYA AKTIF APABILA INPUT DIBENARKAN) -->
+                        <button 
+                          x-show="appConfig.isInputActive" 
+                          @click="editPelatih(p)" 
+                          class="p-1 text-blue-600 hover:bg-blue-50 rounded" 
+                          title="Edit"
+                        >
+                          <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        </button>
+                        
+                        <!-- Butang Edit terkunci jika ditutup oleh Admin -->
+                        <button 
+                          x-show="!appConfig.isInputActive" 
+                          disabled
+                          class="p-1 text-slate-300 cursor-not-allowed" 
+                          title="Kemas kini markah dinyahaktifkan oleh Admin"
+                        >
+                          <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        </button>
+
+                        <!-- Padam (HANYA UNTUK ADMIN) -->
+                        <button x-show="isAdminUnlocked" @click="triggerDeletePelatih(p)" class="p-1 text-red-600 hover:bg-red-50 rounded" title="Padam">
+                          <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                      </div>
+
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 3: STATISTIK & ANALYTICS -->
+    <div x-show="activeTab === 'analytics'" class="space-y-6 font-sans">
+      
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Calon Aktif (Keseluruhan)</span>
+          <span class="text-3xl font-black text-slate-800 font-mono-custom" x-text="`${pelatihList.filter(p => (p.statusAktif || 'AKTIF') === 'AKTIF').length} Orang`"></span>
+          <span class="text-[9px] text-slate-400 mt-1 block" x-text="pelatihList.filter(p => p.statusAktif && p.statusAktif !== 'AKTIF').length > 0 ? `(+${pelatihList.filter(p => p.statusAktif && p.statusAktif !== 'AKTIF').length} tidak aktif)` : ''"></span>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Calon Program Terpilih</span>
+          <span class="text-3xl font-black text-slate-800 font-mono-custom" x-text="`${calculateProgramStats().total} Orang`"></span>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Layak (LULUS) Program</span>
+          <span class="text-3xl font-black text-emerald-600 font-mono-custom" x-text="`${calculateProgramStats().lulus} Orang`"></span>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Kadar Kelulusan Program</span>
+          <span class="text-3xl font-black text-blue-600 font-mono-custom" x-text="`${calculateProgramStats().kadarLulus}%`"></span>
+        </div>
+        <div class="bg-slate-50 p-5 rounded-xl border border-slate-300 border-dashed shadow-sm" x-show="calculateProgramStats().belumDinilai > 0">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Belum Dinilai</span>
+          <span class="text-3xl font-black text-slate-500 font-mono-custom" x-text="`${calculateProgramStats().belumDinilai} Orang`"></span>
+          <span class="text-[9px] text-slate-400 mt-1 block">Calon didaftar, menunggu markah dari guru</span>
+        </div>
+      </div>
+
+      <!-- ANALISIS KELULUSAN PROGRAM -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div>
+          <h3 class="font-extrabold text-sm text-slate-800 uppercase">Analisis Kelulusan Mengikut Program Pengajian</h3>
+          <p class="text-xs text-slate-400">Prestasi kelulusan penuh berdasarkan pelatih berdaftar setiap bidang program.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <template x-for="prg in programsList" :key="prg.id">
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-150 space-y-2">
+              <div class="flex justify-between items-center text-xs font-bold">
+                <span class="text-slate-700 uppercase truncate max-w-[200px]" x-text="prg.name"></span>
+                <span class="text-slate-900 font-mono-custom font-black" x-text="`${getPassRateForProgram(prg.id)}% (${getLulusCountForProgram(prg.id)}/${getStudentCountForProgram(prg.id)})`"></span>
+              </div>
+              <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                <div 
+                  :class="appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? themeClasses[appConfig.temaWarna].bg : 'bg-blue-600'"
+                  class="h-2 rounded-full transition-all duration-500" 
+                  :style="`width: ${getPassRateForProgram(prg.id)}%`"
+                ></div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- KAD SENARAI TENAGA PENGAJAR -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div>
+          <h3 class="font-extrabold text-sm text-slate-800 uppercase flex items-center gap-2">
+            <i data-lucide="shield-check" class="text-blue-600 w-5 h-5"></i>
+            Prestasi & Maklumat Tenaga Pengajar Berdaftar (PP)
+          </h3>
+          <p class="text-xs text-slate-400">Ringkasan pendaftaran pelatih, pengkelasan program dan rekod kelulusan bagi setiap tenaga pengajar berdaftar.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs table-thick-borders">
+            <thead>
+              <tr class="bg-slate-800 text-white text-[10px] uppercase tracking-wider font-semibold">
+                <th class="py-2.5 px-4 text-center">Bil</th>
+                <th class="py-2.5 px-4">Nama Tenaga Pengajar (PP)</th>
+                <th class="py-2.5 px-4">Program Seliaan</th>
+                <th class="py-2.5 px-4 text-center">Jumlah Pelatih</th>
+                <th class="py-2.5 px-4 text-center">Kompeten (Lulus)</th>
+                <th class="py-2.5 px-4 text-center">Kadar Kelulusan PP</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 font-medium text-slate-700">
+              <template x-if="getInstructorsList().length === 0">
+                <tr>
+                  <td colspan="6" class="py-8 text-center text-slate-400 italic font-bold">
+                    Tiada sebarang maklumat tenaga pengajar unik ditemui dalam rekod calon.
+                  </td>
+                </tr>
+              </template>
+              <template x-for="(inst, idx) in getInstructorsList()" :key="idx">
+                <tr class="hover:bg-slate-50 transition-colors">
+                  <td class="py-3 px-4 text-center font-mono-custom text-slate-400" x-text="idx + 1"></td>
+                  <td class="py-3 px-4 font-black text-slate-900 uppercase" x-text="inst.nama"></td>
+                  <td class="py-3 px-4 font-black text-blue-600 uppercase" x-text="inst.programs"></td>
+                  <td class="py-3 px-4 text-center font-mono-custom font-extrabold" x-text="`${inst.total} Orang`"></td>
+                  <td class="py-3 px-4 text-center font-mono-custom font-extrabold text-emerald-600" x-text="`${inst.lulus} Orang`"></td>
+                  <td class="py-3 px-4">
+                    <div class="flex items-center justify-center gap-3">
+                      <span class="font-black text-slate-900 font-mono-custom" x-text="`${inst.kadarLulus}%`"></span>
+                      <div class="w-20 bg-slate-200 h-2 rounded-full overflow-hidden hidden sm:block">
+                        <div 
+                          :class="appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? themeClasses[appConfig.temaWarna].bg : 'bg-blue-600'"
+                          class="h-2 rounded-full transition-all duration-500" 
+                          :style="`width: ${inst.kadarLulus}%`"
+                        ></div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 4: PANEL ADMIN & GOOGLE SHEETS -->
+    <div x-show="activeTab === 'admin'" class="space-y-6 font-sans">
+      
+      <!-- MODUL MUAT NAIK PUKAL (KHUSUS ADMIN) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div>
+          <h3 class="font-black text-emerald-600 text-sm flex items-center gap-2 uppercase">
+            <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+            Muat Naik Pukal CSV — Admin
+          </h3>
+          <p class="text-xs text-slate-500 mt-1">Pilih mod mengikut keperluan: daftar calon dahulu atau terus import markah penuh.</p>
+        </div>
+
+        <!-- PILIH MOD -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Kad Mod 1: Daftar Calon -->
+          <button
+            type="button"
+            @click="adminCsvMod = 'daftar'; refreshIcons()"
+            :class="adminCsvMod === 'daftar'
+              ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-300'
+              : 'border-slate-200 bg-slate-50 hover:bg-slate-100'"
+            class="text-left p-4 rounded-xl border-2 transition-all space-y-1"
+          >
+            <div class="flex items-center gap-2">
+              <i data-lucide="user-plus" class="w-5 h-5" :class="adminCsvMod === 'daftar' ? 'text-blue-600' : 'text-slate-400'"></i>
+              <span class="font-black text-sm" :class="adminCsvMod === 'daftar' ? 'text-blue-700' : 'text-slate-600'">MOD 1: Daftar Calon</span>
+            </div>
+            <p class="text-[11px] text-slate-500 leading-relaxed pl-7">Daftarkan senarai pelajar <strong>tanpa markah</strong>. Hanya perlu: nama, IC, angka giliran, program. Nama pengajar adalah <em>pilihan</em>. Markah diisi guru kemudian.</p>
+          </button>
+
+          <!-- Kad Mod 2: Import Markah Penuh -->
+          <button
+            type="button"
+            @click="adminCsvMod = 'markah'; refreshIcons()"
+            :class="adminCsvMod === 'markah'
+              ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-300'
+              : 'border-slate-200 bg-slate-50 hover:bg-slate-100'"
+            class="text-left p-4 rounded-xl border-2 transition-all space-y-1"
+          >
+            <div class="flex items-center gap-2">
+              <i data-lucide="table-2" class="w-5 h-5" :class="adminCsvMod === 'markah' ? 'text-emerald-600' : 'text-slate-400'"></i>
+              <span class="font-black text-sm" :class="adminCsvMod === 'markah' ? 'text-emerald-700' : 'text-slate-600'">MOD 2: Import Markah Penuh</span>
+            </div>
+            <p class="text-[11px] text-slate-500 leading-relaxed pl-7">Import rekod <strong>lengkap</strong> beserta semua markah CA dan tarikh penilaian. Untuk admin yang sudah ada data markah lengkap.</p>
+          </button>
+        </div>
+
+        <!-- ── MOD 1: Daftar Calon ─────────────────────────────── -->
+        <div x-show="adminCsvMod === 'daftar'" class="space-y-4 border-t pt-4">
+
+          <!-- Format CSV -->
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+            <p class="text-xs font-black text-blue-700 flex items-center gap-1.5">
+              <i data-lucide="info" class="w-4 h-4"></i>
+              Format CSV — Daftar Calon
+            </p>
+            <div class="bg-white border border-blue-200 rounded-lg p-3 font-mono-custom text-[10px] text-slate-700 space-y-0.5">
+              <p class="text-blue-500 font-bold"># Header wajib (baris pertama CSV):</p>
+              <p>NAMA_PELATIH , NO_ANGKA_GILIRAN , NO_MYKAD_TANPA_SEMPANG , KOD_PROGRAM , NAMA_PENGAJAR_(PILIHAN)</p>
+              <p class="text-blue-500 font-bold mt-2"># Contoh data:</p>
+              <p>AHMAD BIN ALI , K05037/25/001 , 010101010001 , WTP , NURUL (TP)</p>
+              <p>SITI BINTI OMAR , K05037/25/002 , 020202020002 , WTE ,</p>
+            </div>
+            <ul class="text-[10px] text-blue-700 space-y-0.5 pl-3 list-disc">
+              <li>Lajur <strong>NAMA_PENGAJAR</strong> adalah <strong>pilihan</strong> — boleh kosong</li>
+              <li>Markah semua CA akan ditetapkan <strong>0</strong> (belum dinilai)</li>
+              <li>Keputusan akan dipaparkan sebagai <strong>BELUM DINILAI</strong></li>
+              <li>Guru boleh isi markah kemudian melalui tab <em>Isi Markah</em></li>
+            </ul>
+          </div>
+
+          <!-- Input Nama Pengajar (pilihan) untuk semua calon dalam CSV ini -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-slate-600">Nama Pengajar untuk Calon Ini (Pilihan)</label>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                x-model="adminCsvPengajar"
+                placeholder="Cth: NURUL (TP) — kosongkan jika guru assign sendiri"
+                class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-800 font-medium focus:ring-2 focus:ring-blue-400 focus:outline-none"
+              />
+              <button type="button" @click="adminCsvPengajar = ''" class="px-3 py-2 text-xs text-slate-400 hover:text-slate-600 border border-slate-200 rounded-lg">Kosong</button>
+            </div>
+            <p class="text-[10px] text-slate-400">Jika CSV anda sudah ada lajur NAMA_PENGAJAR, nilai dalam CSV diutamakan.</p>
+          </div>
+
+          <!-- Butang Templat + Zone Upload -->
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              @click="downloadTemplatDaftarCalon()"
+              class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black py-2 px-4 rounded-lg flex items-center gap-1.5 shadow-sm transition-all"
+            >
+              <i data-lucide="download" class="w-4 h-4"></i> Muat Turun Templat Daftar Calon
+            </button>
+          </div>
+
+          <div class="bg-blue-50 hover:bg-blue-100 transition-colors border-2 border-dashed border-blue-300 rounded-xl p-6 text-center space-y-2 relative cursor-pointer">
+            <input
+              type="file"
+              accept=".csv"
+              @change="handleCsvDaftarCalon($event)"
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <i data-lucide="user-plus" class="mx-auto text-blue-400 w-8 h-8"></i>
+            <p class="text-xs font-black text-blue-700">Pilih atau Seret CSV Daftar Calon</p>
+            <p class="text-[10px] text-blue-500">Calon baru akan didaftarkan. Calon sedia ada (IC sama) — maklumat asas dikemas kini, markah TIDAK disentuh.</p>
+          </div>
+        </div>
+
+        <!-- ── MOD 2: Import Markah Penuh ──────────────────────── -->
+        <div x-show="adminCsvMod === 'markah'" class="space-y-4 border-t pt-4">
+
+          <!-- Format CSV -->
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-2">
+            <p class="text-xs font-black text-emerald-700 flex items-center gap-1.5">
+              <i data-lucide="info" class="w-4 h-4"></i>
+              Format CSV — Import Markah Penuh
+            </p>
+            <div class="bg-white border border-emerald-200 rounded-lg p-3 font-mono-custom text-[10px] text-slate-700 space-y-0.5">
+              <p class="text-emerald-500 font-bold"># Header (auto-jana dalam templat mengikut bilangan CA semasa):</p>
+              <p>NAMA_PELATIH , ANGKA_GILIRAN , IC , PROGRAM , TARIKH ,
+                <template x-for="ab in appConfig.abilities" :key="ab.id"><span x-text="ab.code + '_(MAX_' + ab.max + ') , '"></span></template>
+                NAMA_PENGAJAR_(PILIHAN)
+              </p>
+              <p class="text-emerald-500 font-bold mt-2"># Contoh:</p>
+              <p>AHMAD BIN ALI , K05037/25/001 , 010101010001 , WTP , 2025-06-01 ,
+                <template x-for="ab in appConfig.abilities" :key="ab.id"><span x-text="ab.minPass + ' , '"></span></template>
+                NURUL (TP)
+              </p>
+            </div>
+            <ul class="text-[10px] text-emerald-700 space-y-0.5 pl-3 list-disc">
+              <li>Urutan lajur markah mesti ikut urutan CA dalam sistem (<span x-text="appConfig.abilities ? appConfig.abilities.map(a=>a.code).join(' → ') : ''"></span>)</li>
+              <li>Lajur <strong>NAMA_PENGAJAR</strong> adalah <strong>pilihan</strong> — boleh kosong atau isi dalam ruangan di bawah</li>
+              <li>Rekod sedia ada (IC sama) akan <strong>digantikan sepenuhnya</strong> termasuk markah</li>
+            </ul>
+          </div>
+
+          <!-- Input Nama Pengajar lalai (pilihan) -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-slate-600">Nama Pengajar Lalai (Pilihan)</label>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                x-model="adminCsvPengajar"
+                placeholder="Digunakan jika lajur NAMA_PENGAJAR dalam CSV kosong"
+                class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+              />
+              <button type="button" @click="adminCsvPengajar = ''" class="px-3 py-2 text-xs text-slate-400 hover:text-slate-600 border border-slate-200 rounded-lg">Kosong</button>
+            </div>
+          </div>
+
+          <!-- Butang Templat + Zone Upload -->
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              @click="downloadCSVTemplate()"
+              class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black py-2 px-4 rounded-lg flex items-center gap-1.5 shadow-sm transition-all"
+            >
+              <i data-lucide="download" class="w-4 h-4"></i> Muat Turun Templat Markah Penuh
+            </button>
+          </div>
+
+          <div class="bg-emerald-50 hover:bg-emerald-100 transition-colors border-2 border-dashed border-emerald-300 rounded-xl p-6 text-center space-y-2 relative cursor-pointer">
+            <input
+              type="file"
+              accept=".csv"
+              @change="handleCsvImport($event)"
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <i data-lucide="table-2" class="mx-auto text-emerald-400 w-8 h-8"></i>
+            <p class="text-xs font-black text-emerald-700">Pilih atau Seret CSV Import Markah Penuh</p>
+            <p class="text-[10px] text-emerald-600">Semua markah CA, tarikh penilaian, dan keputusan akan dikira semula secara automatik.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" x-show="appConfig">
+        <!-- KIRI: INTEGRASI GOOGLE SHEETS -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
+          <div>
+            <h3 class="font-black text-emerald-600 text-sm flex items-center gap-1.5 uppercase">
+              <i data-lucide="cloud" class="w-5 h-5"></i>
+              Integrasi Google Sheets
+            </h3>
+            <p class="text-[11px] text-slate-400">URL Apps Script ditanam terus dalam fail HTML. Semua data disimpan ke Google Sheets secara automatik.</p>
+          </div>
+
+          <!-- Status URL Tertanam -->
+          <div :class="gasConfigured ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'" class="rounded-xl border p-4 space-y-2">
+            <div class="flex items-center gap-2">
+              <i data-lucide="link" class="w-4 h-4" :class="gasConfigured ? 'text-emerald-600' : 'text-amber-600'"></i>
+              <span class="text-xs font-black" :class="gasConfigured ? 'text-emerald-700' : 'text-amber-700'" x-text="gasConfigured ? 'URL Apps Script Aktif ✓' : 'URL Belum Dikonfigurasi'"></span>
+            </div>
+            <p class="text-[10px] font-mono-custom break-all" :class="gasConfigured ? 'text-emerald-800' : 'text-amber-700'">
+              <span x-text="gasConfigured ? 'GAS_URL ditanam dalam fail HTML (baris const GAS_URL = ...)' : 'Buka fail HTML → cari const GAS_URL → gantikan dengan URL anda'"></span>
+            </p>
+          </div>
+
+          <!-- Butang refresh manual -->
+          <div class="space-y-2">
+            <button 
+              type="button"
+              @click="fetchFromCloud()"
+              :disabled="!gasConfigured || isSyncing || isLoading"
+              class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black rounded-lg flex items-center justify-center gap-2 transition-all"
+            >
+              <i data-lucide="refresh-cw" class="w-4 h-4" :class="isSyncing ? 'animate-spin' : ''"></i>
+              <span x-text="isSyncing ? 'Sedang Muat Semula...' : 'Muat Semula Data dari Sheets'"></span>
+            </button>
+            <button
+              type="button"
+              @click="pushToCloud()"
+              :disabled="!gasConfigured || isSyncing"
+              class="w-full py-2 bg-slate-700 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black rounded-lg flex items-center justify-center gap-2 transition-all"
+            >
+              <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+              Paksa Simpan Semua ke Sheets
+            </button>
+          </div>
+
+          <!-- Panduan ubah URL dalam HTML -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-3">
+            <h4 class="font-extrabold text-slate-700 flex items-center gap-1">
+              <i data-lucide="code-2" class="w-4 h-4 text-blue-600"></i> Cara Tukar URL Apps Script
+            </h4>
+            <ol class="list-decimal pl-4 space-y-2 text-slate-500 text-[11px]">
+              <li>Buka fail <strong>.html</strong> ini dalam mana-mana editor teks (Notepad, VSCode).</li>
+              <li>Cari baris: <code class="bg-slate-200 px-1 rounded font-mono-custom">const GAS_URL = "GANTIKAN..."</code></li>
+              <li>Gantikan nilai dalam petikan dengan URL Web App GAS anda.</li>
+              <li>Simpan fail dan buka semula dalam pelayar.</li>
+            </ol>
+
+            <div class="pt-2 border-t">
+              <label class="block text-[9px] font-bold text-slate-400 mb-1">KOD APPS SCRIPT v3.0 — Salin & Tampal dalam Apps Script (klik untuk pilih semua):</label>
+              <textarea readonly class="w-full h-64 p-2 bg-slate-900 text-emerald-400 font-mono-custom text-[9px] rounded border border-slate-700" 
+                        onclick="this.select()"
+>// ================================================================
+// GAS v3.1 — Sistem Rekod Markah Core Abilities JPK
+// URL DITANAM dalam HTML — tiada konfigurasi URL di sini
+// Sheet 1: "Data"  |  Sheet 2: "CA_Config"  |  Sheet 3: "Settings"
+// ================================================================
+var SHEET_DATA     = "Data";
+var SHEET_CONFIG   = "CA_Config";
+var SHEET_SETTINGS = "Settings";
+var FIXED_HEADERS  = ["id","nama","angkaGiliran","ic","programId",
+                       "tarikhCA04","statusAktif","jumlah","peratus",
+                       "gred","keputusan","tenagaPengajar"];
+
+function corsOutput(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getOrCreateSheet(name) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(name);
+  if (!sh) sh = ss.insertSheet(name);
+  return sh;
+}
+
+// ── GET: kembalikan pelatih + abilities + config + programs ──
+function doGet(e) {
+  try {
+    var sheet = getOrCreateSheet(SHEET_DATA);
+    var data  = sheet.getDataRange().getValues();
+    var list  = [];
+    if (data.length > 1) {
+      var headers = data[0];
+      for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        if (!row[0] && !row[1]) continue;
+        var item = { scores: {} };
+        for (var j = 0; j < headers.length; j++) {
+          var key = String(headers[j]).trim();
+          var val = row[j];
+          if (key.indexOf("score_") === 0) {
+            item.scores[key.replace("score_", "")] = isNaN(Number(val)) ? 0 : Number(val);
+          } else if (key === "tarikhCA04") {
+            item[key] = (val instanceof Date)
+              ? Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd")
+              : (val ? String(val).trim() : "");
+          } else if (key === "statusAktif") {
+            var s = val ? String(val).trim().toUpperCase() : "";
+            item[key] = (s === "BERHENTI" || s === "PINDAH") ? s : "AKTIF";
+          } else if (key === "jumlah" || key === "peratus") {
+            item[key] = isNaN(Number(val)) ? 0 : Number(val);
+          } else {
+            item[key] = val !== undefined && val !== null ? String(val).trim() : "";
+          }
+        }
+        if (!item.id) item.id = "row_" + i;
+        list.push(item);
+      }
+    }
+    return corsOutput({
+      status   : "success",
+      pelatih  : list,
+      abilities: readAbilitiesConfig(),
+      config   : readSettings(),
+      programs : readPrograms(),
+      jumlah   : list.length
+    });
+  } catch(err) {
+    return corsOutput({ status: "error", message: err.message });
+  }
+}
+
+// ── POST: simpan pelatih + abilities + config + programs ──────
+function doPost(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    if (payload.abilities) saveAbilitiesConfig(payload.abilities);
+    if (payload.config)    saveSettings(payload.config);
+    if (payload.programs)  savePrograms(payload.programs);
+
+    var pelatihList = payload.pelatih || [];
+    var sheet = getOrCreateSheet(SHEET_DATA);
+    sheet.clearContents();
+    if (!Array.isArray(pelatihList) || pelatihList.length === 0) {
+      sheet.appendRow(FIXED_HEADERS);
+      return corsOutput({ status: "success", saved: 0 });
+    }
+    var scoreKeys = [];
+    pelatihList.forEach(function(p) {
+      Object.keys(p.scores || {}).forEach(function(k) {
+        if (scoreKeys.indexOf(k) === -1) scoreKeys.push(k);
+      });
+    });
+    scoreKeys.sort();
+    var headers = FIXED_HEADERS.concat(scoreKeys.map(function(k){ return "score_" + k; }));
+    var rows = [headers];
+    pelatihList.forEach(function(p) {
+      var row = [p.id||"",p.nama||"",p.angkaGiliran||"",p.ic||"",p.programId||"",
+                 p.tarikhCA04||"",p.statusAktif||"AKTIF",
+                 isNaN(Number(p.jumlah))?0:Number(p.jumlah),
+                 isNaN(Number(p.peratus))?0:Number(p.peratus),
+                 p.gred||"",p.keputusan||"",p.tenagaPengajar||""];
+      scoreKeys.forEach(function(k){
+        var sc = p.scores && p.scores[k] !== undefined ? Number(p.scores[k]) : 0;
+        row.push(isNaN(sc) ? 0 : sc);
+      });
+      rows.push(row);
+    });
+    sheet.getRange(1, 1, rows.length, headers.length).setValues(rows);
+    return corsOutput({ status:"success", saved: pelatihList.length });
+  } catch(err) {
+    return corsOutput({ status:"error", message: err.message });
+  }
+}
+
+// ── Abilities (Sheet CA_Config) ───────────────────────────────
+function readAbilitiesConfig() {
+  try {
+    var sh = getOrCreateSheet(SHEET_CONFIG);
+    var d  = sh.getDataRange().getValues();
+    if (d.length <= 1) return getDefaultAbilities();
+    var out = [];
+    for (var i = 1; i < d.length; i++) {
+      if (!d[i][0] && !d[i][1]) continue;
+      out.push({ id: String(d[i][0]).trim(), code: String(d[i][1]).trim(),
+                 name: String(d[i][2]).trim(),
+                 max: isNaN(Number(d[i][3])) ? 20 : Number(d[i][3]),
+                 minPass: isNaN(Number(d[i][4])) ? 12 : Number(d[i][4]) });
+    }
+    return out.length > 0 ? out : getDefaultAbilities();
+  } catch(e) { return getDefaultAbilities(); }
+}
+function saveAbilitiesConfig(abilities) {
+  var sh = getOrCreateSheet(SHEET_CONFIG);
+  sh.clearContents();
+  var rows = [["id","code","name","max","minPass"]];
+  abilities.forEach(function(ab){
+    rows.push([ab.id||"",ab.code||"",ab.name||"",
+               isNaN(Number(ab.max))?20:Number(ab.max),
+               isNaN(Number(ab.minPass))?12:Number(ab.minPass)]);
+  });
+  sh.getRange(1,1,rows.length,5).setValues(rows);
+}
+function getDefaultAbilities() {
+  return [
+    {id:"ca01",code:"CA01",name:"ASAS KOMUNIKASI PEKERJAAN",max:20,minPass:12},
+    {id:"ca02",code:"CA02",name:"KEMAHIRAN TINGKAH LAKU PERSONAL",max:20,minPass:12},
+    {id:"ca03",code:"CA03",name:"KESEDARAN ETIKA DI TEMPAT KERJA",max:20,minPass:12},
+    {id:"ca04",code:"CA04",name:"KESEDARAN, KESIHATAN, KESELAMATAN DAN ALAM SEKITAR",max:20,minPass:12}
+  ];
+}
+
+// ── Config umum (Sheet Settings) ─────────────────────────────
+function readSettings() {
+  try {
+    var sh = getOrCreateSheet(SHEET_SETTINGS);
+    var d  = sh.getDataRange().getValues();
+    var cfg = {};
+    for (var i = 0; i < d.length; i++) {
+      if (d[i][0]) cfg[String(d[i][0]).trim()] = d[i][1] !== undefined ? String(d[i][1]) : "";
+    }
+    return Object.keys(cfg).length > 0 ? cfg : null;
+  } catch(e) { return null; }
+}
+function saveSettings(config) {
+  var sh = getOrCreateSheet(SHEET_SETTINGS);
+  sh.clearContents();
+  var rows = [];
+  Object.keys(config).forEach(function(k){ rows.push([k, String(config[k]||"")]); });
+  if (rows.length > 0) sh.getRange(1,1,rows.length,2).setValues(rows);
+}
+
+// ── Senarai Program (Sheet Settings baris khusus) ─────────────
+function readPrograms() {
+  try {
+    var sh = getOrCreateSheet("Programs");
+    var d  = sh.getDataRange().getValues();
+    if (d.length <= 1) return [];
+    var out = [];
+    for (var i = 1; i < d.length; i++) {
+      if (!d[i][0]) continue;
+      out.push({ id: String(d[i][0]).trim(), code: String(d[i][1]).trim(), name: String(d[i][2]).trim() });
+    }
+    return out;
+  } catch(e) { return []; }
+}
+function savePrograms(programs) {
+  var sh = getOrCreateSheet("Programs");
+  sh.clearContents();
+  var rows = [["id","code","name"]];
+  programs.forEach(function(p){ rows.push([p.id||"",p.code||"",p.name||""]); });
+  sh.getRange(1,1,rows.length,3).setValues(rows);
+}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- TENGAH: HIASAN & REKA BENTUK VISUAL & TEMPLATE SLIP -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
+          <div>
+            <h3 class="font-black text-rose-600 text-sm flex items-center gap-1.5 uppercase">
+              <i data-lucide="palette" class="w-5 h-5"></i>
+              Hiasan & Reka Bentuk Visual
+            </h3>
+            <p class="text-[11px] text-slate-400">Kemaskini pilihan tema paparan serta gaya tulisan sistem.</p>
+          </div>
+
+          <!-- Tema Warna -->
+          <div class="space-y-2">
+            <label class="block text-xs font-bold text-slate-600">Skema Warna Paparan</label>
+            <div class="grid grid-cols-3 gap-2">
+              <template x-for="colorOpt in colorOptions" :key="colorOpt.id">
+                <button
+                  @click="tempConfig.temaWarna = colorOpt.id"
+                  :class="tempConfig.temaWarna === colorOpt.id ? 'border-slate-800 ring-2 ring-slate-400' : 'border-slate-200'"
+                  class="p-2 rounded-lg text-[10px] font-bold text-left flex items-center gap-1.5 border transition-all bg-white"
+                >
+                  <span :class="colorOpt.color" class="w-3 h-3 rounded-full"></span>
+                  <span x-text="colorOpt.name" class="text-slate-800"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <!-- KAWALAN AKSES KEMASUKAN MARKAH PENGAJAR -->
+          <div class="pt-4 border-t border-slate-200 space-y-3">
+            <h4 class="text-[11px] font-black uppercase text-rose-600 tracking-wider flex items-center gap-1">
+              <i data-lucide="shield-alert" class="w-4 h-4"></i> Kebenaran Akses Pengajar
+            </h4>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700">Pengisian & Suntingan Markah</label>
+                  <p class="text-[10px] text-slate-400 mt-0.5">Membenarkan atau menyekat pengajar daripada mendaftar pelatih, memasukkan markah dan mengedit senarai markah.</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                  <input type="checkbox" x-model="tempConfig.isInputActive" class="sr-only peer">
+                  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"></div>
+                </label>
+              </div>
+              <div class="text-[10px] text-slate-500 font-medium">
+                * Semasa dinyahaktifkan, guru hanya boleh memantau, mencari, menapis dan mencetak laporan (Mod Baca Sahaja).
+              </div>
+            </div>
+          </div>
+
+          <!-- Metadata Pengepala & Templat Slip -->
+          <div class="space-y-3 pt-4 border-t border-slate-200">
+            <h4 class="text-[11px] font-black uppercase text-slate-400 tracking-wider">Laporan & Pengepala Sistem</h4>
+            
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500">NAMA SISTEM UTAMA</label>
+              <input 
+                type="text" 
+                x-model="tempConfig.namaSistem"
+                class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-bold bg-white text-slate-800"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500">PUSAT BERTAULIAH & KOD JPK</label>
+              <input 
+                type="text" 
+                x-model="tempConfig.pusatBertauliah"
+                class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-semibold bg-white text-slate-800"
+              />
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-500">KOHORT PENILAIAN</label>
+                <input 
+                  type="text" 
+                  x-model="tempConfig.kohort"
+                  class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-800"
+                />
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-500">TAHAP PENILAIAN</label>
+                <input 
+                  type="text" 
+                  x-model="tempConfig.tahap"
+                  class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-800"
+                />
+              </div>
+            </div>
+
+            <!-- KABIN ADMIN: UBAH TEMPLATE SLIP PELATIH -->
+            <div class="pt-4 mt-2 border-t-2 border-slate-200 space-y-3">
+              <h4 class="text-[11px] font-black uppercase text-rose-600 tracking-wider flex items-center gap-1">
+                <i data-lucide="file-edit" class="w-4 h-4"></i> Pengubahsuaian Templat Slip Keputusan
+              </h4>
+              
+              <div>
+                <label class="block text-[10px] font-bold text-slate-500">TAJUK SLIP KEPUTUSAN</label>
+                <input 
+                  type="text" 
+                  x-model="tempConfig.slipTajuk"
+                  placeholder="BORANG PENILAIAN PENGETAHUAN NCS - CORE ABILITIES"
+                  class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-bold bg-white text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-bold text-slate-500">LABEL TANDATANGAN 1 (GURU/PP)</label>
+                <input 
+                  type="text" 
+                  x-model="tempConfig.slipLabelTandatangan1"
+                  placeholder="TANDATANGAN TENAGA PENGAJAR"
+                  class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-bold text-slate-500">LABEL TANDATANGAN 2 (PENYELARAS)</label>
+                <input 
+                  type="text" 
+                  x-model="tempConfig.slipLabelTandatangan2"
+                  placeholder="PENGESAHAN PENYELARAS TAHAP 1"
+                  class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-bold text-slate-500">JAWATAN LABEL 2</label>
+                <input 
+                  type="text" 
+                  x-model="tempConfig.slipLabelTandatangan2Jawatan"
+                  placeholder="KETUA JABATAN / PENYELARAS JPK"
+                  class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-bold text-slate-500">NOTA KAKI SLIP (FOOTNOTE)</label>
+                <textarea 
+                  x-model="tempConfig.slipNotaKaki"
+                  placeholder="Sila masukkan nota kaki tambahan di sini..."
+                  rows="2"
+                  class="w-full p-2 border border-slate-300 rounded text-xs bg-white text-slate-800"
+                ></textarea>
+              </div>
+            </div>
+
+            <!-- KAWALAN KATA LALUAN ADMIN -->
+            <div class="pt-2 border-t border-slate-100">
+              <label class="block text-[10px] font-bold text-slate-500">TUKAR KATA LALUAN KABIN ADMIN</label>
+              <input 
+                type="text" 
+                x-model="tempConfig.adminPassword"
+                placeholder="Tulis kata laluan baru"
+                class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-mono-custom bg-white text-slate-800"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- KANAN: URUS PROGRAM & STRUKTUR ABILITIES -->
+        <div class="space-y-6">
+          <!-- PENGURUSAN PROGRAM Pengajian -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+            <div>
+              <h3 class="font-black text-rose-600 text-sm flex items-center gap-1.5 uppercase">
+                <i data-lucide="users" class="w-5 h-5"></i>
+                Urus Program Pengajian Dinamik
+              </h3>
+              <p class="text-[11px] text-slate-400">Tambah, sunting, atau keluarkan program daripada senarai.</p>
+            </div>
+
+            <form @submit.prevent="addTempProgram()" class="bg-slate-50 border p-4 rounded-xl grid grid-cols-1 gap-3 items-end">
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-500 mb-1">KOD PROGRAM</label>
+                  <input 
+                    type="text" 
+                    x-model="newProgramCode"
+                    placeholder="Cth: WTP, WTK"
+                    class="w-full px-3 py-1 border border-slate-300 rounded text-xs uppercase font-mono-custom bg-white text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-500 mb-1">NAMA SINGKAT</label>
+                  <input 
+                    type="text" 
+                    x-model="newProgramName"
+                    placeholder="Cth: T. PEMBINAAN"
+                    class="w-full px-3 py-1 border border-slate-300 rounded text-xs uppercase bg-white text-slate-800"
+                  />
+                </div>
+              </div>
+              <button 
+                type="submit"
+                class="w-full py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black rounded flex items-center justify-center gap-1"
+              >
+                <i data-lucide="plus" class="w-4 h-4"></i> Tambah Program
+              </button>
+            </form>
+
+            <div class="space-y-2 max-h-52 overflow-y-auto pr-2">
+              <template x-for="prg in tempPrograms" :key="prg.id">
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg flex justify-between items-center">
+                  <div class="flex items-center gap-3">
+                    <span class="text-[10px] font-black bg-slate-200 text-slate-700 py-0.5 px-2 rounded font-mono-custom" x-text="prg.code"></span>
+                    <span class="text-xs font-black text-slate-800 uppercase" x-text="prg.name"></span>
+                  </div>
+                  <button 
+                    type="button"
+                    @click="removeTempProgram(prg.id)"
+                    class="text-red-500 hover:text-red-700 p-1"
+                  >
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- ABILITIES CONFIG -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+            <div>
+              <h3 class="font-black text-rose-600 text-sm flex items-center gap-1.5 uppercase">
+                <i data-lucide="sliders" class="w-5 h-5"></i>
+                Ubah Struktur Core Abilities JPK
+              </h3>
+              <p class="text-[11px] text-slate-400">Tambah, padam, atau konfigurasi nama subjek, markah maksimum, dan had lulus setiap CA.</p>
+            </div>
+
+            <!-- Info jumlah CA & markah max semasa -->
+            <div class="bg-rose-50 border border-rose-200 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2 text-rose-700 font-black">
+                <i data-lucide="info" class="w-4 h-4"></i>
+                <span>Jumlah CA Semasa (Draf):</span>
+                <span class="bg-rose-600 text-white px-2 py-0.5 rounded font-mono-custom" x-text="tempConfig.abilities ? tempConfig.abilities.length : 0"></span>
+              </div>
+              <div class="text-rose-600 font-bold font-mono-custom">
+                Jumlah Markah Max: <span class="font-black" x-text="tempConfig.abilities ? tempConfig.abilities.reduce((s,a) => s + (a.max||0), 0) : 0"></span>
+              </div>
+            </div>
+
+            <!-- Senarai semua CA yang ada (boleh edit & padam) -->
+            <div class="space-y-3 max-h-80 overflow-y-auto pr-1" x-show="tempConfig && tempConfig.abilities">
+              <template x-for="(ab, idx) in tempConfig.abilities" :key="ab.id">
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+                  <div class="flex justify-between items-center border-b pb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="font-extrabold text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-mono-custom" x-text="ab.code"></span>
+                      <span class="text-[10px] font-bold text-slate-400 uppercase">Tetapan Subjek</span>
+                    </div>
+                    <button 
+                      type="button"
+                      @click="removeTempAbility(ab.id)"
+                      :disabled="tempConfig.abilities.length <= 1"
+                      :class="tempConfig.abilities.length <= 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-red-100 hover:text-red-700'"
+                      class="text-red-500 p-1.5 rounded-lg transition-all flex items-center gap-1 text-[10px] font-black border border-red-200"
+                      title="Padam abilities ini"
+                    >
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> PADAM
+                    </button>
+                  </div>
+
+                  <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1">NAMA SUBJEK / MODULE</label>
+                    <input 
+                      type="text" 
+                      x-model="ab.name"
+                      class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-bold bg-white uppercase focus:ring-2 focus:ring-rose-500 focus:outline-none text-slate-800"
+                    />
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-[8px] font-bold text-slate-400">MARKAH MAKSIMUM WAJARAN</label>
+                      <input 
+                        type="number"
+                        min="1"
+                        x-model.number="ab.max"
+                        class="w-full text-center border text-xs py-1 rounded font-bold font-mono-custom bg-white text-slate-800"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="block text-[8px] font-bold text-slate-400">HAD LULUS MINIMUM (JPK)</label>
+                      <input 
+                        type="number"
+                        min="0"
+                        x-model.number="ab.minPass"
+                        class="w-full text-center border text-xs py-1 rounded font-bold font-mono-custom bg-white text-slate-800"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- FORM TAMBAH CA BAHARU -->
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
+              <h4 class="text-[11px] font-black text-emerald-700 uppercase flex items-center gap-1.5">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                Tambah Core Abilities Baharu
+              </h4>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[9px] font-bold text-emerald-600 mb-1">KOD CA (Cth: CA05)</label>
+                  <input 
+                    type="text"
+                    x-model="newAbilityCode"
+                    placeholder="CA05"
+                    class="w-full px-3 py-1.5 border border-emerald-300 rounded text-xs font-black uppercase font-mono-custom bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[9px] font-bold text-emerald-600 mb-1">NAMA ABILITIES</label>
+                  <input 
+                    type="text"
+                    x-model="newAbilityName"
+                    placeholder="NAMA MODUL ABILITIES"
+                    class="w-full px-3 py-1.5 border border-emerald-300 rounded text-xs font-bold uppercase bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[9px] font-bold text-emerald-600 mb-1">MARKAH MAX</label>
+                  <input 
+                    type="number"
+                    x-model.number="newAbilityMax"
+                    min="1"
+                    placeholder="20"
+                    class="w-full px-3 py-1.5 border border-emerald-300 rounded text-xs font-bold text-center font-mono-custom bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[9px] font-bold text-emerald-600 mb-1">HAD LULUS MIN</label>
+                  <input 
+                    type="number"
+                    x-model.number="newAbilityMinPass"
+                    min="0"
+                    placeholder="12"
+                    class="w-full px-3 py-1.5 border border-emerald-300 rounded text-xs font-bold text-center font-mono-custom bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="button"
+                @click="addTempAbility()"
+                class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-lg flex items-center justify-center gap-1.5 shadow-sm transition-all"
+              >
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                Tambah ke Senarai CA
+              </button>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"></i>
+              <p class="text-[10px] text-amber-800 font-medium leading-relaxed">
+                <strong>Amaran:</strong> Selepas menambah atau memadam CA, klik <em>Simpan Semua Perubahan Admin</em>. Sistem akan <strong>mengira semula</strong> markah jumlah, peratus, dan keputusan semua pelatih secara automatik berdasarkan bilangan CA baharu.
+              </p>
+            </div>
+
+            <div class="flex justify-between items-center pt-2 border-t">
+              <button 
+                type="button" 
+                @click="triggerResetDefaults()"
+                class="text-xs text-slate-500 font-bold hover:underline"
+              >
+                Reset Sistem ke Asal (KV Likas)
+              </button>
+              <button 
+                type="button"
+                @click="saveAllAdminSettings()"
+                class="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black rounded-lg shadow-sm"
+              >
+                Simpan Semua Perubahan Admin
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REKOD LOG PENGURUSAN MASUK/KELUAR (AUDIT TRAIL) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div class="flex justify-between items-center border-b pb-3">
+          <div>
+            <h3 class="font-black text-slate-800 text-sm flex items-center gap-2 uppercase">
+              <i data-lucide="history" class="text-slate-500 w-5 h-5"></i>
+              REKOD LOG MASUK / LOG KELUAR PENTADBIR (AUDIT TRAIL)
+            </h3>
+            <p class="text-[11px] text-slate-400">Menjejaki aktiviti dan akses keselamatan ke kabin pentadbir SPMCA secara kronologi.</p>
+          </div>
+          
+          <button 
+            type="button"
+            @click="clearActivityLogs()"
+            class="text-[10px] text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg font-bold border border-red-200 transition-all"
+          >
+            Kosongkan Rekod Log
+          </button>
+        </div>
+
+        <!-- Senarai Paparan Log Audit -->
+        <div class="overflow-x-auto">
+          <div class="max-h-60 overflow-y-auto border border-slate-100 rounded-xl">
+            <table class="w-full text-left border-collapse text-xs table-thick-borders">
+              <thead>
+                <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider">
+                  <th class="py-2 px-4">Cap Masa (Timestamp)</th>
+                  <th class="py-2 px-4 text-center">Status Aktiviti</th>
+                  <th class="py-2 px-4">Perincian Transaksi Aktiviti</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 font-medium">
+                <template x-if="adminActivityLogs.length === 0">
+                  <tr>
+                    <td colspan="3" class="py-8 text-center text-slate-400 italic">
+                      Tiada sebarang rekod log aktiviti yang disimpan. Sila mulakan sesi pentadbir.
+                    </td>
+                  </tr>
+                </template>
+                
+                <template x-for="log in adminActivityLogs" :key="log.id">
+                  <tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="py-2.5 px-4 font-mono-custom text-slate-500" x-text="log.timestamp"></td>
+                    <td class="py-2.5 px-4 text-center">
+                      <span 
+                        :class="{
+                          'bg-emerald-100 text-emerald-800 border-emerald-200': log.status === 'LOG MASUK',
+                          'bg-slate-100 text-slate-800 border-slate-200': log.status === 'LOG KELUAR',
+                          'bg-red-100 text-red-850 border-red-200': log.status === 'GAGAL LOG MASUK',
+                          'bg-blue-100 text-blue-800 border-blue-200': log.status === 'KEMASKINI TETAPAN'
+                        }"
+                        class="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold border"
+                        x-text="log.status"
+                      ></span>
+                    </td>
+                    <td class="py-2.5 px-4 text-slate-600 font-semibold" x-text="log.perincian"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+
+  <!-- MODAL WAJIB TARIKH AKHIR PENILAIAN CA04 (SEBELUM PROSES IMPORT CSV) -->
+  <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 no-print" x-show="showCsvDateModal" x-transition>
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden">
+      
+      <!-- Header Modal -->
+      <div class="bg-gradient-to-r from-rose-600 to-rose-700 text-white px-6 py-5">
+        <div class="flex items-center gap-3">
+          <div class="bg-white/20 p-2 rounded-xl">
+            <i data-lucide="calendar-check" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-sm uppercase tracking-wide">Pengesahan Tarikh Penilaian Akhir</h3>
+            <p class="text-rose-200 text-[11px] mt-0.5">Wajib diisi sebelum data CSV diproses</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Body Modal -->
+      <div class="p-6 space-y-5">
+        
+        <!-- Info Box -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+          <div class="text-[11px] text-amber-800 leading-relaxed">
+            <p class="font-black uppercase mb-1">Tindakan Diperlukan</p>
+            <p>Sistem mengesan fail CSV telah dipilih. Sebagai tenaga pengajar, anda <strong>wajib merekodkan tarikh akhir penilaian</strong> yang menjadi tarikh rujukan bagi semua pelatih dalam fail ini sebelum sebarang perubahan data dibenarkan.</p>
+          </div>
+        </div>
+
+        <!-- Nama Tenaga Pengajar (Readonly) -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-1">
+          <label class="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Tenaga Pengajar / PP</label>
+          <p class="text-sm font-extrabold text-slate-800 uppercase" x-text="tenagaPengajar || '—'"></p>
+        </div>
+
+        <!-- Input Tarikh CA04 -->
+        <div class="space-y-2">
+          <label class="block text-xs font-black text-rose-700 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="calendar" class="w-4 h-4"></i>
+            Tarikh Akhir Penilaian (<span x-text="appConfig.abilities && appConfig.abilities.length > 0 ? appConfig.abilities[appConfig.abilities.length-1].code : 'CA'"></span>) <span class="text-rose-500">(Wajib)</span>
+          </label>
+          <input 
+            type="date"
+            x-model="csvDateCa04"
+            @keyup.enter="confirmCsvDateAndProcess()"
+            class="w-full px-4 py-3 border-2 border-rose-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-sm font-bold font-mono-custom focus:outline-none bg-white text-slate-800"
+          />
+          <p class="text-[10px] text-slate-400 font-medium">* Tarikh ini akan digunakan sebagai Tarikh Penilaian Akhir bagi semua pelatih dalam fail CSV yang dimuat naik.</p>
+        </div>
+
+      </div>
+
+      <!-- Footer Modal -->
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+        <button 
+          @click="cancelCsvImport()"
+          class="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-200 rounded-lg transition-all"
+        >
+          Batal &amp; Buang Fail
+        </button>
+        <button 
+          @click="confirmCsvDateAndProcess()"
+          :disabled="!csvDateCa04"
+          :class="csvDateCa04 ? 'bg-rose-600 hover:bg-rose-700 text-white cursor-pointer' : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
+          class="px-5 py-2 text-xs font-black rounded-lg shadow-sm flex items-center gap-1.5 transition-all"
+        >
+          <i data-lucide="check-circle" class="w-4 h-4"></i>
+          Sahkan &amp; Proses Data CSV
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bg-slate-950 text-slate-500 py-6 text-center text-xs mt-12 border-t border-slate-900 font-sans no-print">
+    <div class="max-w-7xl mx-auto px-4">
+      <p>© <span x-text="new Date().getFullYear()"></span> <span x-text="appConfig.pusatBertauliah"></span> - Sistem Pengurusan Bersepadu Core Abilities KV Likas.</p>
+    </div>
+  </footer>
+
+</body>
+</html>
