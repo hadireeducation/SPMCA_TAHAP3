@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistem Rekod Markah Core Abilities JPK Tahap 3</title>
+  <title>Sistem Rekod Markah Core Abilities JPK</title>
   
   <!-- Tailwind CSS & Google Fonts -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -68,7 +68,7 @@
     // ⚙️  TANAM URL GOOGLE APPS SCRIPT DI SINI
     //     Tukar kepada URL Web App anda selepas deploy GAS v3.0
     // ════════════════════════════════════════════════════════════════
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxS_Z9kcdyuW_GKLdW2vpaD803R2zP8af1kD9jMGoqXhDXaW2ByxH0OPB3m0xX-0-86/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxzNEOrFI65FDZC6J5emT95eUzVqUh8atbuE6HZRdY96rT3ZGDjJ2SMfJDi9BPhKGXV/exec";
     // Contoh: "https://script.google.com/macros/s/AKfycb.../exec"
     // ════════════════════════════════════════════════════════════════
 
@@ -76,10 +76,10 @@
       return {
         // Konfigurasi Lalai Sistem Rekod Markah
         DEFAULT_CONFIG: {
-          namaSistem: "SISTEM REKOD MARKAH CORE ABILITIES TAHAP 3",
+          namaSistemBase: "SISTEM REKOD MARKAH CORE ABILITIES",
           pusatBertauliah: "K 05037, KOLEJ VOKASIONAL LIKAS",
-          kohort: "2025 / 2026",
-          tahap: "Tahap 3",
+          kohort: "2024 / 2025",
+          tahap: "Tahap 1",
           temaWarna: "blue",
           gayaTulisan: "sans",
           adminPassword: "admin123",
@@ -91,7 +91,7 @@
           ],
           slipTajuk: "BORANG PENILAIAN PENGETAHUAN NCS - CORE ABILITIES",
           slipLabelTandatangan1: "TANDATANGAN TENAGA PENGAJAR",
-          slipLabelTandatangan2: "PENGESAHAN PENYELARAS TAHAP 3",
+          slipLabelTandatangan2Base: "PENGESAHAN PENYELARAS",
           slipLabelTandatangan2Jawatan: "KETUA JABATAN / PENYELARAS JPK",
           slipNotaKaki: "* Pelatih hendaklah mencapai sekurang-kurangnya 12 markah minimum bagi setiap abilities.",
           isInputActive: true
@@ -116,6 +116,28 @@
 
         // ── Keadaan UI ─────────────────────────────────────────────
         appConfig: {},
+
+        // ── Nama/Label Automatik ikut Tahap Penilaian ────────────────
+        // Digabung secara automatik: Nama Asas + TAHAP semasa.
+        // Bila admin tukar TAHAP PENILAIAN dalam tetapan, semua paparan
+        // yang guna getter ini akan berubah serentak tanpa perlu edit manual.
+        get namaSistemDisplay() {
+          const asas  = (this.appConfig.namaSistemBase || 'SISTEM REKOD MARKAH CORE ABILITIES').trim();
+          const tahap = (this.appConfig.tahap || 'Tahap 1').toUpperCase();
+          return `${asas} ${tahap}`;
+        },
+        get slipLabelTandatangan2Display() {
+          const asas  = (this.appConfig.slipLabelTandatangan2Base || 'PENGESAHAN PENYELARAS').trim();
+          const tahap = (this.appConfig.tahap || 'Tahap 1').toUpperCase();
+          return `${asas} ${tahap}`;
+        },
+        // Kod ringkas T1/T2/T3 untuk rujukan borang (Lampiran 2a JPK/CA/PT-T1, dsb)
+        // diambil terus daripada nombor dalam appConfig.tahap.
+        get tahapKod() {
+          const tahap = this.appConfig.tahap || 'Tahap 1';
+          const match = tahap.match(/\d+/);
+          return `T${match ? match[0] : '1'}`;
+        },
         programsList: [],
         pelatihList: [],
         tenagaPengajar: '',
@@ -255,6 +277,8 @@
 
             // Migrasi / kira semula jumlah
             this.pelatihList = this.pelatihList.map(p => this._recalcRecord(p));
+            // Buang rekod pendua (IC sama) - kekal yang terkini sahaja
+            this.pelatihList = this._dedupePelatihByIC(this.pelatihList);
 
             this.syncError = false;
             this.addActivityLog('MUAT SISTEM', `${this.pelatihList.length} rekod & ${this.appConfig.abilities.length} CA dimuat dari Google Sheets.`);
@@ -279,13 +303,19 @@
 
         // ════════════════════════════════════════════════════════════
         // PUSH — Hantar semua data ke GAS (gantikan keseluruhan sheet)
+        // Pulangkan TRUE jika GAS sahkan berjaya, FALSE jika gagal.
+        // NOTA: guna Content-Type text/plain (bukan application/json)
+        // supaya browser TAK hantar "preflight" OPTIONS request (yang
+        // Apps Script tak layan dengan betul) — ini bagi kita boleh
+        // guna mode CORS biasa dan BACA respons sebenar dari server,
+        // bukan hantar "buta" macam sebelum ini (mode: 'no-cors').
         // ════════════════════════════════════════════════════════════
         async _pushToGAS() {
-          if (!this.gasConfigured) return;
+          if (!this.gasConfigured) return false;
           this.isSyncing = true;
           try {
             const payload = {
-              pelatih  : this.pelatihList,
+              pelatih  : this._sortByNama(this.pelatihList),
               abilities: this.appConfig.abilities,
               config   : (() => {
                 const c = JSON.parse(JSON.stringify(this.appConfig));
@@ -294,15 +324,21 @@
               })(),
               programs : this.programsList
             };
-            await fetch(GAS_URL, {
+            const res = await fetch(GAS_URL, {
               method : 'POST',
-              mode   : 'no-cors',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
               body   : JSON.stringify(payload)
             });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (data.status !== 'success') {
+              throw new Error(data.message || 'GAS memulangkan status gagal.');
+            }
+            return true;
           } catch (err) {
             console.error('[GAS] Push gagal:', err);
-            this.triggerNotice('Penyimpanan ke Google Sheets gagal. Semak sambungan.', 'error');
+            this.triggerNotice(`✗ PENYIMPANAN GAGAL: ${err.message}. Data BELUM tersimpan di Google Sheets — cuba lagi!`, 'error');
+            return false;
           } finally {
             this.isSyncing = false;
           }
@@ -319,12 +355,39 @@
           });
           const pct    = sumMax > 0 ? parseFloat(((sumScores / sumMax) * 100).toFixed(2)) : 0;
           const status = isLulus ? 'LULUS' : 'GAGAL';
-          return { ...p, jumlah: parseFloat(sumScores.toFixed(2)), peratus: pct, keputusan: status, gred: this.getGred(pct, status) };
+          return { ...p, ic: this.formatIC(p.ic), jumlah: parseFloat(sumScores.toFixed(2)), peratus: pct, keputusan: status, gred: this.getGred(pct, status) };
         },
 
         // ════════════════════════════════════════════════════════════
         // UTILITI
         // ════════════════════════════════════════════════════════════
+        // No. Kad Pengenalan Malaysia sentiasa 12 digit (YYMMDD-PB-###G).
+        // Sumber luar (Excel/Google Sheets/CSV) selalu buang '0' depan
+        // sebab formatkan lajur sebagai nombor. Fungsi ini pulangkan
+        // semula bentuk penuh 12 digit supaya tak hilang lagi.
+        // No. Kad Pengenalan Malaysia sentiasa 12 digit (YYMMDD-PB-###G).
+        // Sumber luar (Excel/Google Sheets/CSV) selalu buang '0' depan
+        // sebab formatkan lajur sebagai nombor. Fungsi ini pulangkan
+        // semula bentuk penuh 12 digit supaya tak hilang lagi.
+        formatIC(raw) {
+          const digits = String(raw || '').replace(/[^0-9]/g, '');
+          if (!digits) return '';
+          return digits.length < 12 ? digits.padStart(12, '0') : digits;
+        },
+
+        // Buang rekod pendua berasaskan No. Kad Pengenalan yang sama.
+        // Kemunculan TERAKHIR dalam senarai dianggap paling terkini
+        // (nama/markah terbaru dari tenaga pengajar/penyelaras/admin) —
+        // rekod lama/lapuk yang sama IC dibuang secara automatik.
+        _dedupePelatihByIC(list) {
+          const map = new Map();
+          list.forEach(p => {
+            const key = p.ic || `__noic_${p.id}`;
+            map.set(key, p); // kemunculan terakhir menang, gantikan yang lama
+          });
+          return Array.from(map.values());
+        },
+
         formatDate(dateStr) {
           if (!dateStr) return '';
           const parts = dateStr.split('-');
@@ -411,13 +474,19 @@
           const scoresToSave = {};
           this.appConfig.abilities.forEach(ab => { scoresToSave[ab.id] = this.getModuleScore(ab); });
 
-          const existing = this.editingId ? this.pelatihList.find(x => x.id === this.editingId) : null;
+          const icBaharu = this.formatIC(this.formIc);
+          // Cari rekod SEDIA ADA berdasarkan ID (mod edit) ATAU berdasarkan
+          // No. Kad Pengenalan yang sama (walaupun guru tak pilih dari senarai).
+          // Ini elak rekod pendua/lapuk tertinggal - senarai lama automatik ditimpa.
+          const existingById = this.editingId ? this.pelatihList.find(x => x.id === this.editingId) : null;
+          const existingByIc = !existingById ? this.pelatihList.find(x => x.ic === icBaharu) : null;
+          const existing     = existingById || existingByIc;
           const record = {
-            id: this.editingId || `ID_${Date.now()}`,
+            id: existing ? existing.id : `ID_${Date.now()}`,
             programId: this.selectedProgramId,
             nama: this.formNama.toUpperCase().trim(),
             angkaGiliran: this.formAngkaGiliran.toUpperCase().trim(),
-            ic: this.formIc.replace(/[^0-9]/g, '').trim(),
+            ic: icBaharu,
             scores: scoresToSave,
             tarikhCA04: this.formTarikhCA04,
             jumlah: live.jumlah,
@@ -428,8 +497,8 @@
             tenagaPengajar: this.tenagaPengajar.toUpperCase().trim()
           };
 
-          if (this.editingId) {
-            this.pelatihList = this.pelatihList.map(p => p.id === this.editingId ? record : p);
+          if (existing) {
+            this.pelatihList = this.pelatihList.map(p => p.id === existing.id ? record : p);
             this.triggerNotice(`Rekod ${record.nama} dikemaskini. Menyimpan ke Sheets...`);
           } else {
             this.pelatihList = [record, ...this.pelatihList];
@@ -437,15 +506,15 @@
           }
 
           this.clearForm();
-          await this._pushToGAS();
-          this.triggerNotice(`Berjaya disimpan ke Google Sheets! ✓`, 'success');
+          const ok = await this._pushToGAS();
+          if (ok) this.triggerNotice(`Berjaya disimpan ke Google Sheets! ✓`, 'success');
         },
 
         tukarStatusAktif(p, statusBaru) {
           const label = { 'AKTIF': 'Aktif', 'BERHENTI': 'Berhenti', 'PINDAH': 'Pindah' }[statusBaru] || statusBaru;
           this.pelatihList = this.pelatihList.map(x => x.id === p.id ? { ...x, statusAktif: statusBaru } : x);
           this.triggerNotice(`Status ${p.nama} → ${label.toUpperCase()}. Menyimpan...`);
-          this._pushToGAS().then(() => this.triggerNotice('Status dikemas kini dalam Google Sheets ✓'));
+          this._pushToGAS().then(ok => { if (ok) this.triggerNotice('Status dikemas kini dalam Google Sheets ✓'); });
           this.refreshIcons();
         },
 
@@ -482,11 +551,19 @@
 
         pemicuCetak() { window.print(); },
 
+        // Susun senarai pelatih ikut abjad nama (A-Z). Guna localeCompare
+        // supaya susunan betul walaupun ada nombor/simbol dalam nama.
+        _sortByNama(list) {
+          return [...list].sort((a, b) =>
+            (a.nama || '').localeCompare((b.nama || ''), 'ms', { sensitivity: 'base' })
+          );
+        },
+
         getFilteredList() {
           const programFiltered = this.selectedProgramId === 'SEMUA'
             ? this.pelatihList
             : this.pelatihList.filter(p => p.programId === this.selectedProgramId);
-          return programFiltered.filter(p => {
+          const filtered = programFiltered.filter(p => {
             const matchSearch = p.nama.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
                                 (p.angkaGiliran && p.angkaGiliran.toLowerCase().includes(this.searchQuery.toLowerCase())) ||
                                 p.ic.includes(this.searchQuery);
@@ -495,11 +572,14 @@
             const matchAktif = this.filterStatusAktif === 'SEMUA' ? true : aktif === this.filterStatusAktif;
             return matchSearch && matchStatus && matchAktif;
           });
+          return this._sortByNama(filtered);
         },
 
         getFilteredPelatihByProgram() {
-          if (this.selectedProgramId === 'SEMUA') return this.pelatihList;
-          return this.pelatihList.filter(p => p.programId === this.selectedProgramId);
+          const list = this.selectedProgramId === 'SEMUA'
+            ? this.pelatihList
+            : this.pelatihList.filter(p => p.programId === this.selectedProgramId);
+          return this._sortByNama(list);
         },
 
         getStudentCountForProgram(prgId) {
@@ -605,8 +685,8 @@
           this.confirmAction = async () => {
             this.pelatihList = this.pelatihList.filter(x => x.id !== p.id);
             this.triggerNotice("Rekod dipadam. Mengemas kini Google Sheets...");
-            await this._pushToGAS();
-            this.triggerNotice("Rekod berjaya dipadam dari Google Sheets ✓", "success");
+            const ok = await this._pushToGAS();
+            if (ok) this.triggerNotice("Rekod berjaya dipadam dari Google Sheets ✓", "success");
           };
           this.showConfirmModal = true;
           this.refreshIcons();
@@ -630,7 +710,7 @@
             if (data.status !== 'success') throw new Error(data.message);
 
             if (Array.isArray(data.pelatih)) {
-              this.pelatihList = data.pelatih.map(p => this._recalcRecord(p));
+              this.pelatihList = this._dedupePelatihByIC(data.pelatih.map(p => this._recalcRecord(p)));
             }
             if (data.abilities && data.abilities.length > 0) {
               this.appConfig.abilities = data.abilities;
@@ -654,7 +734,7 @@
         },
 
         // ── Hantar ke GAS (alias publik untuk butang UI) ─────────
-        async pushToCloud() { await this._pushToGAS(); this.triggerNotice('Data disegerakkan ke Google Sheets ✓', 'success'); },
+        async pushToCloud() { const ok = await this._pushToGAS(); if (ok) this.triggerNotice('Data disegerakkan ke Google Sheets ✓', 'success'); },
 
         // ── Tidak lagi guna updateSyncStatus berasas URL ──────────
         updateSyncStatus() { /* digantikan oleh gasConfigured */ },
@@ -669,7 +749,7 @@
           if (list.length > 0) {
             list.forEach(p => {
               const blanks = this.appConfig.abilities.map(() => '').join(",");
-              csv += `"${p.nama}","${p.angkaGiliran || ''}","${p.ic}","${this.getProgramCode(p.programId)}",${blanks}\n`;
+              csv += `"${p.nama}","${p.angkaGiliran || ''}","'${p.ic}","${this.getProgramCode(p.programId)}",${blanks}\n`;
             });
           } else {
             csv += `"NAMA CONTOH","K05037/24/001","010203120000","${this.getActiveProgramDetails().code}",${this.appConfig.abilities.map(() => '').join(",")}\n`;
@@ -713,7 +793,7 @@
               const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''));
               if (cols.length < 5) continue;
               const namaCalon = cols[0] ? cols[0].toUpperCase() : '';
-              const icCalon   = cols[2] ? cols[2].replace(/[^0-9]/g, '') : '';
+              const icCalon   = cols[2] ? this.formatIC(cols[2]) : '';
               if (!namaCalon || !icCalon) continue;
               const programCode = cols[3] ? cols[3].toUpperCase() : '';
               const matchedPrg  = this.programsList.find(p => p.code === programCode);
@@ -741,8 +821,8 @@
             }
             if (updated > 0 || added > 0) {
               this.triggerNotice(`Diproses: +${added} baru, ~${updated} kemas kini. Menyimpan ke Sheets...`);
-              await this._pushToGAS();
-              this.triggerNotice(`Berjaya! ${added + updated} rekod disimpan ke Google Sheets ✓`, 'success');
+              const ok = await this._pushToGAS();
+              if (ok) this.triggerNotice(`Berjaya! ${added + updated} rekod disimpan ke Google Sheets ✓`, 'success');
               this.activeTab = 'list';
               this.refreshIcons();
             } else {
@@ -797,7 +877,7 @@
 
               const nama         = cols[0] ? cols[0].toUpperCase().trim() : '';
               const angkaGiliran = cols[1] ? cols[1].toUpperCase().trim() : '';
-              const ic           = cols[2] ? cols[2].replace(/[^0-9]/g, '').trim() : '';
+              const ic           = cols[2] ? this.formatIC(cols[2]) : '';
               const programCode  = cols[3] ? cols[3].toUpperCase().trim() : '';
               // Nama pengajar dari lajur ke-5 (pilihan), atau dari input manual admin
               const pengajar     = (cols[4] || '').trim() || this.adminCsvPengajar.trim();
@@ -844,8 +924,8 @@
 
             if (ditambah > 0 || dikemas > 0) {
               this.triggerNotice(`Daftar Calon: +${ditambah} baru, ~${dikemas} kemas kini${diskip > 0 ? `, ${diskip} baris diskip` : ''}. Menyimpan...`);
-              await this._pushToGAS();
-              this.triggerNotice(`✓ ${ditambah + dikemas} calon berjaya didaftarkan ke Google Sheets. Markah boleh diisi oleh guru kemudian.`, 'success');
+              const ok = await this._pushToGAS();
+              if (ok) this.triggerNotice(`✓ ${ditambah + dikemas} calon berjaya didaftarkan ke Google Sheets. Markah boleh diisi oleh guru kemudian.`, 'success');
               this.activeTab = 'list';
               this.refreshIcons();
             } else {
@@ -874,7 +954,7 @@
 
               const nama         = cols[0] ? cols[0].toUpperCase() : '';
               const angkaGiliran = cols[1] ? cols[1].toUpperCase() : '';
-              const ic           = cols[2] ? cols[2].replace(/[^0-9]/g, '') : '';
+              const ic           = cols[2] ? this.formatIC(cols[2]) : '';
               const programCode  = cols[3] ? cols[3].toUpperCase() : '';
               const tarikhCA04   = cols[4] || '';
               // Nama pengajar: lajur selepas semua CA, atau input manual
@@ -920,8 +1000,8 @@
 
             if (updated > 0 || added > 0) {
               this.triggerNotice(`Import Markah: +${added} baru, ~${updated} kemas kini. Menyimpan...`);
-              await this._pushToGAS();
-              this.triggerNotice(`✓ ${added + updated} rekod markah disimpan ke Google Sheets.`, 'success');
+              const ok = await this._pushToGAS();
+              if (ok) this.triggerNotice(`✓ ${added + updated} rekod markah disimpan ke Google Sheets.`, 'success');
               this.activeTab = 'list';
               this.refreshIcons();
             } else {
@@ -1005,13 +1085,13 @@
           this.appConfig    = JSON.parse(JSON.stringify(this.tempConfig));
           this.programsList = JSON.parse(JSON.stringify(this.tempPrograms));
 
-          // Kira semula semua rekod pelatih
-          this.pelatihList = this.pelatihList.map(p => this._recalcRecord(p));
+          // Kira semula semua rekod pelatih + buang pendua (IC sama)
+          this.pelatihList = this._dedupePelatihByIC(this.pelatihList.map(p => this._recalcRecord(p)));
 
           this.addActivityLog('KEMASKINI TETAPAN', `${this.appConfig.abilities.length} CA, ${this.programsList.length} program dikemas kini.`);
           this.triggerNotice(`Menyimpan konfigurasi ke Google Sheets...`);
-          await this._pushToGAS();
-          this.triggerNotice(`Semua konfigurasi berjaya disimpan ke Google Sheets ✓ (${this.appConfig.abilities.length} CA aktif)`, "success");
+          const ok = await this._pushToGAS();
+          if (ok) this.triggerNotice(`Semua konfigurasi berjaya disimpan ke Google Sheets ✓ (${this.appConfig.abilities.length} CA aktif)`, "success");
         },
 
         triggerResetDefaults() {
@@ -1096,6 +1176,7 @@
   class="bg-slate-50 text-slate-800 transition-colors duration-300 min-h-screen flex flex-col"
   x-data="systemState()"
   x-init="initSystem()"
+  x-effect="document.title = namaSistemDisplay"
 >
 
   <!-- SKRIN LOADING — papar semasa data dimuat dari Google Sheets -->
@@ -1121,7 +1202,7 @@
           <i data-lucide="award" :class="appConfig.temaWarna && themeClasses[appConfig.temaWarna] ? themeClasses[appConfig.temaWarna].text : 'text-blue-600'" class="w-6 h-6"></i>
         </div>
         <div>
-          <h1 class="text-base font-extrabold tracking-tight" x-text="appConfig.namaSistem"></h1>
+          <h1 class="text-base font-extrabold tracking-tight" x-text="namaSistemDisplay"></h1>
           <p class="text-xs text-white/90 font-semibold uppercase tracking-wider" x-text="`${appConfig.pusatBertauliah} • ${appConfig.tahap}`"></p>
         </div>
       </div>
@@ -1231,7 +1312,7 @@
     <div class="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-6 border border-slate-200">
       <div class="flex justify-between items-center border-b pb-3">
         <h3 class="text-sm font-extrabold text-slate-800 uppercase flex items-center gap-2">
-          <i data-lucide="file-text" class="text-blue-600"></i> PREVIEW SLIP KEPUTUSAN (Lampiran 2a JPK/CA/PT-T3)
+          <i data-lucide="file-text" class="text-blue-600"></i> PREVIEW SLIP KEPUTUSAN (Lampiran 2a JPK/CA/PT-<span x-text="tahapKod"></span>)
         </h3>
         <button @click="showSlipModal = false" class="text-slate-400 hover:text-slate-600">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -1245,7 +1326,7 @@
           <!-- Top header metadata -->
           <div class="flex justify-between items-center text-[11px] font-sans text-black mb-4">
             <div>Lampiran 2a</div>
-            <div class="font-bold">JPK/CA/PT-T3</div>
+            <div class="font-bold" x-text="`JPK/CA/PT-${tahapKod}`"></div>
           </div>
 
           <!-- Main Title -->
@@ -1253,7 +1334,7 @@
             <h2 class="text-[15px] font-extrabold uppercase tracking-tight text-black" x-text="appConfig.slipTajuk"></h2>
             <p class="text-[11px] text-gray-700 italic mt-0.5">(Borang ini perlu diisi oleh PP pada setiap kali menjalankan Penilaian Pengetahuan)</p>
             <div class="mt-4">
-              <span class="text-[13px] font-extrabold uppercase border-b-2 border-black pb-0.5 tracking-widest text-black">CORE ABILITIES – TAHAP 3</span>
+              <span class="text-[13px] font-extrabold uppercase border-b-2 border-black pb-0.5 tracking-widest text-black" x-text="`CORE ABILITIES – ${(appConfig.tahap || "Tahap 1").toUpperCase()}`"></span>
             </div>
           </div>
 
@@ -1361,7 +1442,7 @@
         <!-- Top header metadata -->
         <div class="flex justify-between items-center text-[11px] text-black mb-4">
           <div>Lampiran 2a</div>
-          <div class="font-bold">JPK/CA/PT-T1</div>
+          <div class="font-bold" x-text="`JPK/CA/PT-${tahapKod}`"></div>
         </div>
 
         <!-- Main Title -->
@@ -1369,7 +1450,7 @@
           <h2 class="text-[15px] font-extrabold uppercase tracking-tight text-black" x-text="appConfig.slipTajuk"></h2>
           <p class="text-[11px] text-gray-700 italic mt-0.5">(Borang ini perlu diisi oleh PP pada setiap kali menjalankan Penilaian Pengetahuan)</p>
           <div class="mt-4">
-            <span class="text-[13px] font-extrabold uppercase border-b-2 border-black pb-0.5 tracking-widest text-black">CORE ABILITIES – TAHAP 3</span>
+            <span class="text-[13px] font-extrabold uppercase border-b-2 border-black pb-0.5 tracking-widest text-black" x-text="`CORE ABILITIES – ${(appConfig.tahap || "Tahap 1").toUpperCase()}`"></span>
           </div>
         </div>
 
@@ -1458,7 +1539,7 @@
       <div class="space-y-6">
         <div class="text-center space-y-1 mb-6 border-b-2 border-slate-900 pb-4">
           <h2 class="text-lg font-extrabold uppercase" x-text="appConfig.pusatBertauliah"></h2>
-          <h3 class="text-xs font-bold text-slate-600">SENARAI REKOD MARKAH PENILAIAN CORE ABILITIES TAHAP 3</h3>
+          <h3 class="text-xs font-bold text-slate-600" x-text="`SENARAI REKOD MARKAH PENILAIAN CORE ABILITIES ${(appConfig.tahap || 'Tahap 1').toUpperCase()}`"></h3>
           <p class="text-[10px] font-semibold" x-text="`PROGRAM: ${getActiveProgramDetails().code} - ${getActiveProgramDetails().name} • KOHORT: ${appConfig.kohort}`"></p>
         </div>
 
@@ -1540,7 +1621,7 @@
           </div>
           <div class="space-y-12">
             <p>Disahkan Oleh:<br><br><br>____________________________________<br>
-              <span x-text="appConfig.slipLabelTandatangan2 || 'PENGESAHAN PENYELARAS TAHAP 1'"></span>
+              <span x-text="slipLabelTandatangan2Display"></span>
             </p>
           </div>
         </div>
@@ -1642,9 +1723,9 @@
     <div x-show="activeTab === 'dashboard'" class="space-y-6">
       <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 class="text-xl font-extrabold">Selamat Datang, Penyelaras dan Tenaga Pengajar Core Abilities</h2>
+          <h2 class="text-xl font-extrabold">Selamat Datang, Tenaga Pengajar Core Abilities</h2>
           <p class="text-xs text-slate-400 mt-1 max-w-2xl">
-            Uruskan data pelatih, masukkan markah JPK Core Abilities Tahap 3, dan jana slip keputusan yang bersedia untuk dicetak.
+            Uruskan data pelatih, masukkan markah JPK Core Abilities <span x-text="appConfig.tahap || 'Tahap 1'"></span>, dan jana slip keputusan yang bersedia untuk dicetak.
           </p>
           <div class="mt-4 flex flex-wrap gap-2">
             <span class="text-[11px] bg-slate-800 px-3 py-1 rounded-md text-slate-300">
@@ -3020,12 +3101,14 @@ function savePrograms(programs) {
             <h4 class="text-[11px] font-black uppercase text-slate-400 tracking-wider">Laporan & Pengepala Sistem</h4>
             
             <div>
-              <label class="block text-[10px] font-bold text-slate-500">NAMA SISTEM UTAMA</label>
+              <label class="block text-[10px] font-bold text-slate-500">NAMA SISTEM UTAMA (TANPA "TAHAP X")</label>
               <input 
                 type="text" 
-                x-model="tempConfig.namaSistem"
+                x-model="tempConfig.namaSistemBase"
+                placeholder="SISTEM REKOD MARKAH CORE ABILITIES"
                 class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-bold bg-white text-slate-800"
               />
+              <p class="text-[10px] text-slate-400 mt-1">Pratonton: <span class="font-bold" x-text="`${tempConfig.namaSistemBase || ''} ${(tempConfig.tahap || '').toUpperCase()}`"></span></p>
             </div>
 
             <div>
@@ -3048,11 +3131,14 @@ function savePrograms(programs) {
               </div>
               <div>
                 <label class="block text-[10px] font-bold text-slate-500">TAHAP PENILAIAN</label>
-                <input 
-                  type="text" 
+                <select
                   x-model="tempConfig.tahap"
                   class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-800"
-                />
+                >
+                  <option value="Tahap 1">Tahap 1</option>
+                  <option value="Tahap 2">Tahap 2</option>
+                  <option value="Tahap 3">Tahap 3</option>
+                </select>
               </div>
             </div>
 
@@ -3083,13 +3169,14 @@ function savePrograms(programs) {
               </div>
 
               <div>
-                <label class="block text-[10px] font-bold text-slate-500">LABEL TANDATANGAN 2 (PENYELARAS)</label>
+                <label class="block text-[10px] font-bold text-slate-500">LABEL TANDATANGAN 2 (PENYELARAS) — TANPA "TAHAP X"</label>
                 <input 
                   type="text" 
-                  x-model="tempConfig.slipLabelTandatangan2"
-                  placeholder="PENGESAHAN PENYELARAS TAHAP 3"
+                  x-model="tempConfig.slipLabelTandatangan2Base"
+                  placeholder="PENGESAHAN PENYELARAS"
                   class="w-full px-3 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-800"
                 />
+                <p class="text-[10px] text-slate-400 mt-1">Pratonton: <span class="font-bold" x-text="`${tempConfig.slipLabelTandatangan2Base || ''} ${(tempConfig.tahap || '').toUpperCase()}`"></span></p>
               </div>
 
               <div>
