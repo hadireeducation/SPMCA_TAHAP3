@@ -31,7 +31,35 @@
     .print-only {
       display: none;
     }
+    /* ═══════════════════════════════════════════════════════════
+       FIX ZOOM AUTOMATIK iPHONE/iOS SAFARI
+       ---------------------------------------------------------------
+       Safari iOS automatik ZOOM-IN skrin bila pengguna fokus pada
+       input/select/textarea yang saiz fonnya < 16px. Sistem ni guna
+       banyak class Tailwind kecil (text-xs, text-[10px], dsb) untuk
+       muat lebih banyak medan dalam skrin kecil — tapi ini cetuskan
+       zoom mengganggu setiap kali tenaga pengajar taip markah.
+       Fix: paksa minimum 16px HANYA pada skrin mobile (≤768px). Teks
+       jadi sedikit lebih besar berbanding reka bentuk asal pada
+       telefon — kesan sampingan yang diterima (piawai amalan web),
+       jauh lebih baik daripada zoom mengganggu setiap kali fokus input.
+       ═══════════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+    }
+
     @media print {
+      * {
+        /* WAJIB untuk Safari/iOS — tanpa ini, Safari akan buang warna
+           latar belakang & sempadan (border) semasa cetak secara senyap
+           (untuk jimat dakwa), menyebabkan jadual/slip nampak pincang
+           atau kosong pada iPhone walaupun kod berjalan betul. */
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
       body {
         background-color: white !important;
         color: black !important;
@@ -68,7 +96,7 @@
     // ⚙️  TANAM URL GOOGLE APPS SCRIPT DI SINI
     //     Tukar kepada URL Web App anda selepas deploy GAS v3.0
     // ════════════════════════════════════════════════════════════════
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxzNEOrFI65FDZC6J5emT95eUzVqUh8atbuE6HZRdY96rT3ZGDjJ2SMfJDi9BPhKGXV/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyusCRX2nAVbMFGSxSqExGq7UUVa9RbVPsGHh-cGTho8jVdjJMnBJ8nmafCYZV-3TFx/exec";
     // Contoh: "https://script.google.com/macros/s/AKfycb.../exec"
     // ════════════════════════════════════════════════════════════════
 
@@ -299,6 +327,25 @@
           this.isLoading = false;
           this.clearForm();
           this.refreshIcons();
+
+          // ── AUTO-SYNC LATAR BELAKANG ─────────────────────────────
+          // Muat semula config (termasuk isInputActive) secara senyap
+          // setiap 20 saat, supaya SEMUA peranti (bukan hanya peranti
+          // Admin) sentiasa nampak tetapan terkini tanpa perlu refresh
+          // manual. Ini elak isu "boleh save di satu peranti, tak
+          // boleh di peranti lain" akibat config lapuk/stale.
+          if (this.gasConfigured && !this._autoSyncStarted) {
+            this._autoSyncStarted = true;
+            setInterval(() => {
+              // Jangan ganggu jika pengguna sedang aktif menaip di borang
+              // markah (editingId aktif / medan borang ada nilai), supaya
+              // tidak hilang input yang belum disimpan.
+              const sedangMenaip = this.formNama.trim() !== '' || this.editingId !== null;
+              if (!sedangMenaip && !this.isSyncing) {
+                this.fetchFromCloud(true);
+              }
+            }, 20000);
+          }
         },
 
         // ════════════════════════════════════════════════════════════
@@ -460,6 +507,12 @@
         // SIMPAN MARKAH → terus ke GAS
         // ════════════════════════════════════════════════════════════
         async saveScoreForm() {
+          // Semak status TERKINI dari Google Sheets dahulu (bukan nilai
+          // lapuk yang mungkin dimuat semasa page dibuka tadi), supaya
+          // keputusan "boleh/tidak boleh simpan" konsisten di semua peranti.
+          if (this.gasConfigured) {
+            await this.fetchFromCloud(true);
+          }
           if (!this.appConfig.isInputActive) {
             this.triggerNotice("Penyimpanan disekat. Modul kemasukan markah dinyahaktifkan oleh Admin!", "error"); return;
           }
@@ -544,12 +597,54 @@
         },
 
         cetakJadualMarkah() {
+          this._tunjukTipCetakIOS();
+          // Amaran jika penapis status semasa akan menyembunyikan pelajar
+          // Tidak Aktif/Pindah/Berhenti daripada jadual yang bakal dicetak.
+          if (this.filterStatusAktif !== 'SEMUA') {
+            const labelPenapis = { 'AKTIF': 'AKTIF sahaja', 'BERHENTI': 'BERHENTI sahaja', 'PINDAH': 'PINDAH sahaja' }[this.filterStatusAktif] || this.filterStatusAktif;
+            this.triggerNotice(`Penapis status semasa: ${labelPenapis}. Pelajar lain TIDAK akan tercetak. Tukar ke "Semua Status" jika perlu senarai penuh.`, 'error');
+          }
           this.activePrintType = 'table';
           this.refreshIcons();
-          setTimeout(() => window.print(), 300);
+          // PENTING (khas iPhone/Safari): window.print() masih dipanggil
+          // sebagai hasil LANGSUNG gesture klik pengguna (bukan setTimeout)
+          // supaya tidak disekat dasar "user-activation" Safari. Tapi
+          // $nextTick sahaja cuma tunggu Alpine siap kemaskini DOM — ia
+          // TIDAK jamin WebKit dah selesai "paint" skrin. Safari/iOS lebih
+          // ketat berbanding Chrome pasal ini & boleh cetak jadual KOSONG
+          // atau separuh jika print() dipanggil sebelum paint selesai.
+          // requestAnimationFrame() tambahan memastikan satu bingkai paint
+          // penuh berlaku dahulu sebelum cetakan diambil.
+          this.$nextTick(() => {
+            requestAnimationFrame(() => window.print());
+          });
         },
 
-        pemicuCetak() { window.print(); },
+        pemicuCetak() {
+          this._tunjukTipCetakIOS();
+          requestAnimationFrame(() => window.print());
+        },
+
+        // Kesan peranti iOS (iPhone/iPad, termasuk iPadOS yang menyamar
+        // sebagai "Macintosh" tapi ada skrin sentuh).
+        isIOSDevice() {
+          return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        },
+
+        // Panduan sekali sahaja (setiap sesi) untuk pengguna iPhone/iPad —
+        // Safari TIDAK ada pilihan "Save as PDF" terus macam Chrome desktop.
+        // Pengguna perlu: pada skrin Pratonton Cetak, CUBIT-BUKA (pinch-out)
+        // imej pratonton dahulu untuk papar penuh skrin, kemudian tekan ikon
+        // Kongsi (Share) di penjuru atas kanan > "Simpan ke Fail". Tanpa tip
+        // ini, ramai pengguna sangka fungsi cetak "tak berfungsi" sedangkan
+        // ia cuma langkah UI Safari yang berbeza daripada Android/Chrome.
+        _tunjukTipCetakIOS() {
+          if (this.isIOSDevice() && !sessionStorage.getItem('tipCetakIOSShown')) {
+            sessionStorage.setItem('tipCetakIOSShown', '1');
+            this.triggerNotice('📱 iPhone/iPad: Pada skrin Pratonton, CUBIT-BUKA imej untuk papar penuh, lalu tekan ikon Kongsi (Share) > "Simpan ke Fail" untuk simpan sebagai PDF.', 'success');
+          }
+        },
 
         // Susun senarai pelatih ikut abjad nama (A-Z). Guna localeCompare
         // supaya susunan betul walaupun ada nombor/simbol dalam nama.
@@ -1547,7 +1642,7 @@
           <thead>
             <!-- Aras 1: Banner Penyelarasan Penuh -->
             <tr class="bg-slate-100 text-slate-900 text-[10px] uppercase font-bold">
-              <th :colspan="appConfig.abilities ? appConfig.abilities.length + 8 : 13" class="py-2 px-4 text-center bg-slate-100 font-extrabold">
+              <th :colspan="appConfig.abilities ? appConfig.abilities.length + 9 : 14" class="py-2 px-4 text-center bg-slate-100 font-extrabold">
                 RUMUSAN REKOD MARKAH CORE ABILITIES <span x-text="appConfig.tahap.toUpperCase()"></span>, <span x-text="appConfig.pusatBertauliah"></span>. KOHORT <span x-text="appConfig.kohort"></span>
               </th>
             </tr>
@@ -1558,6 +1653,7 @@
               <th class="py-2 px-2" rowspan="2">No. Angka Giliran</th>
               <th class="py-2 px-2" rowspan="2">No. MyKad</th>
               <th class="py-2 px-2 text-center" rowspan="2">Program</th>
+              <th class="py-2 px-2 text-center" rowspan="2">Status</th>
               <th class="py-1 px-2 text-center" :colspan="appConfig.abilities ? appConfig.abilities.length + 2 : 6">coptpa</th>
               <th class="py-1 px-2 text-center" colspan="2">kappa</th>
             </tr>
@@ -1580,6 +1676,13 @@
                 <td class="py-2 px-2 font-mono-custom uppercase" x-text="p.angkaGiliran || '-'"></td>
                 <td class="py-2 px-2 font-mono-custom" x-text="p.ic"></td>
                 <td class="py-2 px-2 text-center font-bold" x-text="getProgramCode(p.programId)"></td>
+                <td class="py-2 px-2 text-center font-black text-[9px]"
+                    :class="{
+                      'text-emerald-700': (p.statusAktif || 'AKTIF') === 'AKTIF',
+                      'text-red-600':     p.statusAktif === 'BERHENTI',
+                      'text-amber-600':   p.statusAktif === 'PINDAH'
+                    }"
+                    x-text="p.statusAktif || 'AKTIF'"></td>
                 <template x-for="ab in appConfig.abilities" :key="ab.id">
                   <td class="py-2 px-1 text-center font-mono-custom">
                     <span x-text="(p.scores[ab.id] || 0).toFixed(0)"></span>
@@ -2213,7 +2316,7 @@
             <div class="relative mt-2">
               <input 
                 type="file" 
-                accept=".csv" 
+                accept=".csv,text/csv,text/comma-separated-values,application/vnd.ms-excel,application/csv" 
                 @change="handleInstructorCSVImport($event)" 
                 class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
               />
@@ -2713,7 +2816,7 @@
           <div class="bg-blue-50 hover:bg-blue-100 transition-colors border-2 border-dashed border-blue-300 rounded-xl p-6 text-center space-y-2 relative cursor-pointer">
             <input
               type="file"
-              accept=".csv"
+              accept=".csv,text/csv,text/comma-separated-values,application/vnd.ms-excel,application/csv"
               @change="handleCsvDaftarCalon($event)"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
@@ -2779,7 +2882,7 @@
           <div class="bg-emerald-50 hover:bg-emerald-100 transition-colors border-2 border-dashed border-emerald-300 rounded-xl p-6 text-center space-y-2 relative cursor-pointer">
             <input
               type="file"
-              accept=".csv"
+              accept=".csv,text/csv,text/comma-separated-values,application/vnd.ms-excel,application/csv"
               @change="handleCsvImport($event)"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
