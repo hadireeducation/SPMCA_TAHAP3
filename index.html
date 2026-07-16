@@ -96,7 +96,7 @@
     // ⚙️  TANAM URL GOOGLE APPS SCRIPT DI SINI
     //     Tukar kepada URL Web App anda selepas deploy GAS v3.0
     // ════════════════════════════════════════════════════════════════
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzhCIkI56VXPqLuIg561Ns7avlibZg5hE-DsTuK5Jqo70fW6ysBSeP_qWv8OXHHlDhHDw/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzOX16fOVVPYJjQDvbwx4RJpovgO8_Rt2ki3S72BeAzqdx8ieff4CHv3P6yS28s5s0d/exec";
     // Contoh: "https://script.google.com/macros/s/AKfycb.../exec"
     // ════════════════════════════════════════════════════════════════
 
@@ -477,8 +477,12 @@
           this.notificationType = type;
           this.notificationUndoAction = undoAction;
           this.notification = true;
-          // Bagi lebih masa (8 saat) kalau ada tindakan Undo, supaya
-          // sempat pengguna tekan sebelum notis hilang.
+          this.refreshIcons();
+          // RALAT (error) kekal papar SEHINGGA ditutup manual — supaya
+          // kegagalan kritikal (cth: simpan ke Google Sheets gagal) tak
+          // boleh terlepas pandang. Kejayaan biasa hilang sendiri lepas
+          // 4 saat (8 saat jika ada Undo).
+          if (type === 'error') return;
           setTimeout(() => this.notification = false, undoAction ? 8000 : 4000);
         },
 
@@ -1489,6 +1493,14 @@
         class="ml-2 px-2.5 py-1 text-[11px] font-black uppercase bg-white/20 hover:bg-white/30 rounded-lg border border-white/40 whitespace-nowrap"
       >
         Undo
+      </button>
+      <button 
+        x-show="notificationType === 'error'"
+        @click="notification = false"
+        class="ml-1 text-white/80 hover:text-white flex-shrink-0"
+        title="Tutup"
+      >
+        <i data-lucide="x" class="w-4 h-4"></i>
       </button>
     </div>
   </div>
