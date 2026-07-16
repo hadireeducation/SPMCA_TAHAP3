@@ -96,7 +96,7 @@
     // ⚙️  TANAM URL GOOGLE APPS SCRIPT DI SINI
     //     Tukar kepada URL Web App anda selepas deploy GAS v3.0
     // ════════════════════════════════════════════════════════════════
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyusCRX2nAVbMFGSxSqExGq7UUVa9RbVPsGHh-cGTho8jVdjJMnBJ8nmafCYZV-3TFx/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzOX16fOVVPYJjQDvbwx4RJpovgO8_Rt2ki3S72BeAzqdx8ieff4CHv3P6yS28s5s0d/exec";
     // Contoh: "https://script.google.com/macros/s/AKfycb.../exec"
     // ════════════════════════════════════════════════════════════════
 
@@ -112,10 +112,10 @@
           gayaTulisan: "sans",
           adminPassword: "admin123",
           abilities: [
-            { id: "ca01", code: "CA01", name: "ASAS KOMUNIKASI PEKERJAAN", max: 20, minPass: 12 },
-            { id: "ca02", code: "CA02", name: "KEMAHIRAN TINGKAH LAKU PERSONAL", max: 20, minPass: 12 },
-            { id: "ca03", code: "CA03", name: "KESEDARAN ETIKA DI TEMPAT KERJA", max: 20, minPass: 12 },
-            { id: "ca04", code: "CA04", name: "KESEDARAN, KESIHATAN, KESELAMATAN DAN ALAM SEKITAR", max: 20, minPass: 12 }
+            { id: "ca01", code: "CA01", name: "ASAS KOMUNIKASI PEKERJAAN", max: 20, minPass: 12, wajibTarikh: false },
+            { id: "ca02", code: "CA02", name: "KEMAHIRAN TINGKAH LAKU PERSONAL", max: 20, minPass: 12, wajibTarikh: false },
+            { id: "ca03", code: "CA03", name: "KESEDARAN ETIKA DI TEMPAT KERJA", max: 20, minPass: 12, wajibTarikh: false },
+            { id: "ca04", code: "CA04", name: "KESEDARAN, KESIHATAN, KESELAMATAN DAN ALAM SEKITAR", max: 20, minPass: 12, wajibTarikh: true }
           ],
           slipTajuk: "BORANG PENILAIAN PENGETAHUAN NCS - CORE ABILITIES",
           slipLabelTandatangan1: "TANDATANGAN TENAGA PENGAJAR",
@@ -137,9 +137,9 @@
         ],
 
         REAL_SAMPLES_PELATIH: [
-          { id: "s1", programId: "prg1", nama: "WARREN YOED LANGAD GITOM", angkaGiliran: "K05037/24/001", ic: "81217121047", scores: { ca01: 19, ca02: 15.79, ca03: 19, ca04: 12 }, tarikhCA04: "2024-11-20", jumlah: 65.79, peratus: 82.24, gred: "LULUS", keputusan: "LULUS", statusAktif: "AKTIF", tenagaPengajar: "NURUL (TP)" },
-          { id: "s2", programId: "prg1", nama: "TARONCE", angkaGiliran: "K05037/24/002", ic: "80921120991", scores: { ca01: 17, ca02: 17.89, ca03: 18, ca04: 11 }, tarikhCA04: "2024-11-20", jumlah: 63.89, peratus: 79.86, gred: "LULUS", keputusan: "GAGAL", statusAktif: "AKTIF", tenagaPengajar: "NURUL (TP)" },
-          { id: "s3", programId: "prg1", nama: "SAIYIDATUL MASNAH BINTI ABDUL JAMIL", angkaGiliran: "K05037/24/003", ic: "80509120180", scores: { ca01: 19, ca02: 14.74, ca03: 17, ca04: 20 }, tarikhCA04: "2024-11-20", jumlah: 70.74, peratus: 88.43, gred: "LULUS", keputusan: "LULUS", statusAktif: "AKTIF", tenagaPengajar: "NURUL (TP)" }
+          { id: "s1", programId: "prg1", nama: "WARREN YOED LANGAD GITOM", angkaGiliran: "K05037/24/001", ic: "81217121047", scores: { ca01: 19, ca02: 15.79, ca03: 19, ca04: 12 }, tarikhPenilaian: { ca04: "2024-11-20" }, jumlah: 65.79, peratus: 82.24, gred: "LULUS", keputusan: "LULUS", statusAktif: "AKTIF", tenagaPengajar: "NURUL (TP)" },
+          { id: "s2", programId: "prg1", nama: "TARONCE", angkaGiliran: "K05037/24/002", ic: "80921120991", scores: { ca01: 17, ca02: 17.89, ca03: 18, ca04: 11 }, tarikhPenilaian: { ca04: "2024-11-20" }, jumlah: 63.89, peratus: 79.86, gred: "LULUS", keputusan: "GAGAL", statusAktif: "AKTIF", tenagaPengajar: "NURUL (TP)" },
+          { id: "s3", programId: "prg1", nama: "SAIYIDATUL MASNAH BINTI ABDUL JAMIL", angkaGiliran: "K05037/24/003", ic: "80509120180", scores: { ca01: 19, ca02: 14.74, ca03: 17, ca04: 20 }, tarikhPenilaian: { ca04: "2024-11-20" }, jumlah: 70.74, peratus: 88.43, gred: "LULUS", keputusan: "LULUS", statusAktif: "AKTIF", tenagaPengajar: "NURUL (TP)" }
         ],
 
         // ── Keadaan UI ─────────────────────────────────────────────
@@ -189,7 +189,7 @@
         formAngkaGiliran: '',
         formIc: '',
         formScores: {},
-        formTarikhCA04: '',
+        formTarikhPenilaian: {},
         formMethod: 'new',
         selectedTraineeIdToScore: '',
 
@@ -346,6 +346,23 @@
               }
             }, 20000);
           }
+
+          // ── BERSIHKAN TAJUK SEMASA CETAK ─────────────────────────
+          // Kebanyakan pelayar (Chrome/Edge/Safari) auto-tambah header/
+          // footer (tajuk tab + URL di atas, tarikh/masa + no. muka
+          // surat di bawah) semasa cetak — ini TETAPAN PELAYAR, laman
+          // web TAK BOLEH matikan terus. Tapi kita boleh kosongkan
+          // document.title sementara semasa cetak supaya sekurang-
+          // kurangnya bahagian "tajuk" dalam header tu bersih/kosong.
+          // Untuk buang SEPENUHNYA (termasuk tarikh/masa/no. muka
+          // surat), pengguna kena matikan "Headers and footers" dalam
+          // tetapan "More settings" pada dialog cetak pelayar mereka.
+          if (!this._printTitleHookSet) {
+            this._printTitleHookSet = true;
+            const tajukAsal = document.title;
+            window.addEventListener('beforeprint', () => { document.title = ''; });
+            window.addEventListener('afterprint',  () => { document.title = tajukAsal; });
+          }
         },
 
         // ════════════════════════════════════════════════════════════
@@ -483,7 +500,7 @@
         clearForm() {
           this.formNama = ''; this.formAngkaGiliran = ''; this.formIc = '';
           this.editingId = null; this.selectedTraineeIdToScore = '';
-          this.formScores = {}; this.formTarikhCA04 = '';
+          this.formScores = {}; this.formTarikhPenilaian = {};
           if (this.appConfig && this.appConfig.abilities) {
             this.appConfig.abilities.forEach(ab => { this.formScores[ab.id] = ab.minPass; });
           }
@@ -497,10 +514,25 @@
           if (p) {
             this.formNama = p.nama; this.formIc = p.ic;
             this.formAngkaGiliran = p.angkaGiliran || '';
-            this.formTarikhCA04 = p.tarikhCA04 || '';
+            this.formTarikhPenilaian = this._muatTarikhPenilaian(p);
             this.appConfig.abilities.forEach(ab => { this.formScores[ab.id] = p.scores[ab.id] || 0; });
             this.editingId = p.id;
           }
+        },
+
+        // Bina objek tarikh per-CA untuk borang, dengan sokongan rekod LAMA
+        // (sebelum kemaskini ini) yang cuma ada satu medan tunggal
+        // "tarikhCA04". Jika rekod lama itu wujud dan tarikhPenilaian
+        // belum ada nilai untuk CA yang kini ditanda wajib, guna nilai
+        // lama tu sebagai anggaran permulaan (elak kehilangan data).
+        _muatTarikhPenilaian(p) {
+          const hasil = { ...(p.tarikhPenilaian || {}) };
+          if (p.tarikhCA04 && this.appConfig && this.appConfig.abilities) {
+            this.appConfig.abilities.forEach(ab => {
+              if (ab.wajibTarikh && !hasil[ab.id]) hasil[ab.id] = p.tarikhCA04;
+            });
+          }
+          return hasil;
         },
 
         // ════════════════════════════════════════════════════════════
@@ -519,8 +551,12 @@
           if (!this.tenagaPengajar.trim()) {
             this.triggerNotice("Nama Tenaga Pengajar wajib diisi!", "error"); return;
           }
-          if (!this.formTarikhCA04) {
-            this.triggerNotice(`Wajib masukkan Tarikh Penilaian ${this.appConfig.abilities[this.appConfig.abilities.length-1].code}!`, "error"); return;
+          // Semak tarikh penilaian HANYA untuk CA yang admin tanda WAJIB.
+          const caWajibTarikhTiadaNilai = (this.appConfig.abilities || []).find(
+            ab => ab.wajibTarikh && !this.formTarikhPenilaian[ab.id]
+          );
+          if (caWajibTarikhTiadaNilai) {
+            this.triggerNotice(`Wajib masukkan Tarikh Penilaian ${caWajibTarikhTiadaNilai.code}!`, "error"); return;
           }
 
           const live = this.calculateLiveTotals();
@@ -541,7 +577,7 @@
             angkaGiliran: this.formAngkaGiliran.toUpperCase().trim(),
             ic: icBaharu,
             scores: scoresToSave,
-            tarikhCA04: this.formTarikhCA04,
+            tarikhPenilaian: { ...this.formTarikhPenilaian },
             jumlah: live.jumlah,
             peratus: live.peratus,
             keputusan: live.keputusan,
@@ -579,7 +615,7 @@
           this.selectedProgramId = p.programId;
           this.formNama = p.nama; this.formIc = p.ic;
           this.formAngkaGiliran = p.angkaGiliran || '';
-          this.formTarikhCA04 = p.tarikhCA04 || '';
+          this.formTarikhPenilaian = this._muatTarikhPenilaian(p);
           this.appConfig.abilities.forEach(ab => { this.formScores[ab.id] = p.scores[ab.id] || 0; });
           this.formMethod = 'new';
           this.activeTab = 'form';
@@ -588,6 +624,33 @@
         },
 
         cancelEdit() { this.clearForm(); this.triggerNotice("Penyuntingan dibatalkan."); },
+
+        // Teks paparan "Tarikh Penilaian" pada slip cetak — HANYA tarikh
+        // (tiada label kod CA seperti "CA01"/"CA04" ditulis). Jika CA
+        // wajib berkongsi tarikh sama, papar sekali sahaja; jika berbeza,
+        // senaraikan tarikh unik dipisah simbol " / ".
+        getTarikhPenilaianSlipText(p) {
+          if (!p || !this.appConfig?.abilities) return '____________________';
+          const t = this._muatTarikhPenilaian(p);
+          const wajibList = this.appConfig.abilities.filter(ab => ab.wajibTarikh);
+          if (wajibList.length === 0) return '____________________';
+          const tarikhUnik = [...new Set(
+            wajibList.map(ab => t[ab.id] ? this.formatDate(t[ab.id]) : null).filter(Boolean)
+          )];
+          return tarikhUnik.length > 0 ? tarikhUnik.join(' / ') : '____________________';
+        },
+
+        // Sebarkan SATU tarikh (dari lajur CSV) kepada semua CA yang admin
+        // tanda wajib — CSV kekal guna satu lajur tarikh sejagat (elak
+        // rombak besar templat CSV sedia ada), tapi nilainya kini disimpan
+        // secara struktur baharu (tarikhPenilaian per-CA).
+        _sebarkanTarikhWajib(tarikh) {
+          const hasil = {};
+          (this.appConfig?.abilities || []).forEach(ab => {
+            if (ab.wajibTarikh) hasil[ab.id] = tarikh;
+          });
+          return hasil;
+        },
 
         cetakSlipPelatih(p) {
           this.selectedPelatihForSlip = p;
@@ -906,7 +969,7 @@
               const record = {
                 id: existIdx !== -1 ? this.pelatihList[existIdx].id : `ID_CSV_${Date.now()}_${i}`,
                 programId, nama: namaCalon, angkaGiliran: cols[1] ? cols[1].toUpperCase() : '', ic: icCalon,
-                scores: scoresToSave, tarikhCA04: globalDate,
+                scores: scoresToSave, tarikhPenilaian: this._sebarkanTarikhWajib(globalDate),
                 jumlah: parseFloat(sumScores.toFixed(2)), peratus: pct, keputusan: status,
                 gred: this.getGred(pct, status), statusAktif: 'AKTIF',
                 tenagaPengajar: this.tenagaPengajar.toUpperCase().trim()
@@ -1005,7 +1068,7 @@
                   id            : `ID_DAFTAR_${Date.now()}_${i}`,
                   nama, angkaGiliran, ic, programId,
                   scores        : scoresKosong,
-                  tarikhCA04    : '',
+                  tarikhPenilaian: {},
                   jumlah        : 0,
                   peratus       : 0,
                   keputusan     : 'BELUM DINILAI',
@@ -1051,7 +1114,7 @@
               const angkaGiliran = cols[1] ? cols[1].toUpperCase() : '';
               const ic           = cols[2] ? this.formatIC(cols[2]) : '';
               const programCode  = cols[3] ? cols[3].toUpperCase() : '';
-              const tarikhCA04   = cols[4] || '';
+              const tarikhCsv    = cols[4] || '';
               // Nama pengajar: lajur selepas semua CA, atau input manual
               const pengajarCol  = cols[5 + this.appConfig.abilities.length] || '';
               const pengajar     = pengajarCol.trim() || this.adminCsvPengajar.trim() || 'ADMIN';
@@ -1080,7 +1143,7 @@
                 id            : existIdx !== -1 ? this.pelatihList[existIdx].id : `ID_ADMIN_${Date.now()}_${i}`,
                 programId, nama, angkaGiliran, ic,
                 scores        : scoresToSave,
-                tarikhCA04,
+                tarikhPenilaian: this._sebarkanTarikhWajib(tarikhCsv),
                 jumlah        : parseFloat(sumScores.toFixed(2)),
                 peratus       : pct,
                 keputusan     : status,
@@ -1148,7 +1211,7 @@
           const code = this.newAbilityCode.toUpperCase().trim();
           const idKey = code.toLowerCase().replace(/[^a-z0-9]/g, '');
           if (this.tempConfig.abilities.find(a => a.code === code)) { this.triggerNotice(`Kod ${code} sudah wujud!`, "error"); return; }
-          this.tempConfig.abilities.push({ id: idKey, code, name: this.newAbilityName.toUpperCase().trim(), max: parseInt(this.newAbilityMax) || 20, minPass: parseInt(this.newAbilityMinPass) || 12 });
+          this.tempConfig.abilities.push({ id: idKey, code, name: this.newAbilityName.toUpperCase().trim(), max: parseInt(this.newAbilityMax) || 20, minPass: parseInt(this.newAbilityMinPass) || 12, wajibTarikh: false });
           this.newAbilityCode = ''; this.newAbilityName = ''; this.newAbilityMax = 20; this.newAbilityMinPass = 12;
           this.triggerNotice(`${code} ditambah ke draf. Klik Simpan untuk mengesahkan.`);
         },
@@ -1486,7 +1549,7 @@
                 <tbody>
                   <tr class="border-b-2 border-black">
                     <td class="p-2 font-bold border-r-2 border-black w-[15%]">Tarikh Penilaian :</td>
-                    <td class="p-2 border-r-2 border-black w-[18%] font-mono-custom font-extrabold text-black" x-text="selectedPelatihForSlip.tarikhCA04 ? formatDate(selectedPelatihForSlip.tarikhCA04) : '____________________'"></td>
+                    <td class="p-2 border-r-2 border-black w-[18%] font-mono-custom font-extrabold text-black text-[10px] leading-tight break-words" x-text="getTarikhPenilaianSlipText(selectedPelatihForSlip)"></td>
                     <td class="p-2 font-bold border-r-2 border-black w-[12%]">Nama PP:</td>
                     <td class="p-2 border-r-2 border-black w-[20%] font-extrabold uppercase text-black"></td>
                     <td class="p-2 font-bold border-r-2 border-black w-[15%]">T/tangan PP:</td>
@@ -1599,7 +1662,7 @@
           <tbody>
             <tr class="border-b-2 border-black">
               <td class="p-2 font-bold border-r-2 border-black w-[15%]">Tarikh Penilaian :</td>
-              <td class="p-2 border-r-2 border-black w-[18%] font-mono-custom font-extrabold text-black" x-text="selectedPelatihForSlip.tarikhCA04 ? formatDate(selectedPelatihForSlip.tarikhCA04) : '____________________'"></td>
+              <td class="p-2 border-r-2 border-black w-[18%] font-mono-custom font-extrabold text-black text-[10px] leading-tight break-words" x-text="getTarikhPenilaianSlipText(selectedPelatihForSlip)"></td>
               <td class="p-2 font-bold border-r-2 border-black w-[12%]">Nama PP:</td>
               <td class="p-2 border-r-2 border-black w-[20%] font-extrabold uppercase text-black"></td>
               <td class="p-2 font-bold border-r-2 border-black w-[15%]">T/tangan PP:</td>
@@ -2143,14 +2206,14 @@
                       />
                     </div>
 
-                    <!-- Input Tarikh Penilaian Terbina khas untuk CA04 -->
-                    <template x-if="ab.id === appConfig.abilities[appConfig.abilities.length - 1].id">
+                    <!-- Input Tarikh Penilaian — HANYA muncul jika Admin tandakan CA ini WAJIB -->
+                    <template x-if="ab.wajibTarikh">
                       <div class="mt-3 pt-3 border-t border-slate-200">
-                        <label class="block text-[10px] font-black text-rose-600 mb-1">TARIKH PENILAIAN (WAJIB)</label>
+                        <label class="block text-[10px] font-black text-rose-600 mb-1" x-text="`TARIKH PENILAIAN ${ab.code} (WAJIB)`"></label>
                         <input 
                           type="date"
                           required
-                          x-model="formTarikhCA04"
+                          x-model="formTarikhPenilaian[ab.id]"
                           :disabled="!appConfig.isInputActive"
                           :class="!appConfig.isInputActive ? 'bg-slate-150 cursor-not-allowed text-slate-400' : 'bg-white'"
                           class="w-full px-3 py-1.5 border border-rose-300 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono-custom"
@@ -2950,27 +3013,85 @@
             </ol>
 
             <div class="pt-2 border-t">
-              <label class="block text-[9px] font-bold text-slate-400 mb-1">KOD APPS SCRIPT v3.0 — Salin & Tampal dalam Apps Script (klik untuk pilih semua):</label>
+              <label class="block text-[9px] font-bold text-slate-400 mb-1">KOD APPS SCRIPT v3.4 (SENTIASA DIKEMASKINI SECARA AUTOMATIK — jangan guna versi selain ini) — Salin & Tampal dalam Apps Script (klik untuk pilih semua):</label>
               <textarea readonly class="w-full h-64 p-2 bg-slate-900 text-emerald-400 font-mono-custom text-[9px] rounded border border-slate-700" 
                         onclick="this.select()"
 >// ================================================================
-// GAS v3.1 — Sistem Rekod Markah Core Abilities JPK
-// URL DITANAM dalam HTML — tiada konfigurasi URL di sini
-// Sheet 1: "Data"  |  Sheet 2: "CA_Config"  |  Sheet 3: "Settings"
+// GAS v3.4 — Sistem Rekod Markah Core Abilities JPK
+// ----------------------------------------------------------------
+// KEMASKINI v3.4:
+//   • Tarikh Penilaian kini PER-CA (bukan satu tarikh sejagat untuk
+//     CA04 sahaja). Admin pilih dalam HTML CA mana yang wajib ada
+//     tarikh — disimpan sebagai lajur dinamik "tarikh_<idCA>",
+//     sama corak dengan lajur skor "score_<idCA>".
+//   • CA_Config kini ada lajur ke-6 "wajibTarikh" (TRUE/FALSE).
+//   • Keserasian LAMA dikekalkan: sheet sedia ada tanpa lajur
+//     wajibTarikh akan automatik anggap CA TERAKHIR sahaja wajib
+//     (sepadan tingkah laku sistem sebelum ini); lajur lama
+//     "tarikhCA04" (jika masih wujud) tetap boleh dibaca.
+// ----------------------------------------------------------------
+// KEMASKINI v3.3:
+//   • CacheService pada doGet (kurangkan bacaan Sheet berulang).
+//   • LockService pada doPost (elak race condition simpan serentak).
+//   • isInputActive disimpan/dibaca sebagai "true"/"false" eksplisit.
+// ----------------------------------------------------------------
+// KEMASKINI v3.2:
+//   • Lajur IC (No. Kad Pengenalan) dipaksa format "Plain Text"
+//     sebelum ditulis, supaya Google Sheets tak auto-tukar jadi
+//     Nombor dan buang "0" di depan.
+//   • Fungsi padIC() pulangkan semula IC ke bentuk penuh 12 digit
+//     semasa BACA (doGet) & semasa TULIS (doPost).
+// ----------------------------------------------------------------
+// ARAHAN PEMASANGAN:
+//   1. Buka Google Sheets anda
+//   2. Namakan tab-tab sheet seperti berikut (WAJIB TEPAT):
+//        Sheet 1  →  Data
+//        Sheet 2  →  CA_Config
+//        Sheet 3  →  Settings
+//        Sheet 4  →  Programs
+//   3. Klik Extensions > Apps Script
+//   4. PADAM semua kod sedia ada
+//   5. TAMPAL keseluruhan kod ini
+//   6. Klik Deploy > Manage Deployments > Edit (✏️) > New Version > Deploy
+//        (JANGAN "New Deployment" — URL Web App akan berubah!)
 // ================================================================
+//
+// STRUKTUR SHEETS:
+//   Data       — rekod pelatih (header auto-jana oleh sistem)
+//   CA_Config  — konfigurasi Core Abilities [id, code, name, max, minPass, wajibTarikh]
+//   Settings   — tetapan sistem [key, value]
+//   Programs   — senarai program [id, code, name]
+//
+// ALIRAN DATA:
+//   HTML (doGet) ←── Google Sheets ──→ HTML (doPost)
+//
+// ================================================================
+
+// ─── NAMA SHEET ─────────────────────────────────────────────────
 var SHEET_DATA     = "Data";
 var SHEET_CONFIG   = "CA_Config";
 var SHEET_SETTINGS = "Settings";
-var FIXED_HEADERS  = ["id","nama","angkaGiliran","ic","programId",
-                       "tarikhCA04","statusAktif","jumlah","peratus",
-                       "gred","keputusan","tenagaPengajar"];
+var SHEET_PROGRAMS = "Programs";
 
+// ─── LAJUR TETAP rekod pelatih (sebelum lajur score_/tarikh_ dinamik) ──
+var FIXED_HEADERS = [
+  "id", "nama", "angkaGiliran", "ic", "programId",
+  "statusAktif", "jumlah", "peratus",
+  "gred", "keputusan", "tenagaPengajar"
+];
+
+// ================================================================
+// CORS OUTPUT — wajib untuk semua response (sokong fetch dari HTML)
+// ================================================================
 function corsOutput(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// ================================================================
+// HELPER — Dapatkan atau cipta sheet mengikut nama
+// ================================================================
 function getOrCreateSheet(name) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(name);
@@ -2978,174 +3099,399 @@ function getOrCreateSheet(name) {
   return sh;
 }
 
-// ── GET: kembalikan pelatih + abilities + config + programs ──
+// ================================================================
+// PAD IC — No. Kad Pengenalan Malaysia sentiasa 12 digit.
+// Google Sheets kerap auto-tukar lajur IC jadi Nombor & buang
+// "0" di depan. Fungsi ini pulangkan semula bentuk penuh 12 digit
+// (dipanggil semasa BACA doGet & semasa TULIS doPost).
+// ================================================================
+function padIC(val) {
+  var digits = String(val === undefined || val === null ? "" : val).replace(/[^0-9]/g, "");
+  if (!digits) return "";
+  return digits.length < 12 ? ("000000000000" + digits).slice(-12) : digits;
+}
+
+// ================================================================
+// doGet — Baca semua data dan hantar ke HTML
+// Mengembalikan: { status, pelatih[], abilities[], config{}, programs[], jumlah }
+// ================================================================
+// Kunci cache & tempoh sah (saat). Ditetapkan SEDIKIT kurang daripada
+// selang auto-sync HTML (20 saat) supaya data tidak terasa lapuk,
+// tapi cukup untuk elak baca Sheet berulang bila BEBERAPA peranti
+// poll dalam tempoh masa yang hampir sama.
+var CACHE_KEY_DATA    = "ca_full_data_v1";
+var CACHE_TTL_SECONDS = 15;
+
 function doGet(e) {
   try {
+    var cache  = CacheService.getScriptCache();
+    var cached = cache.get(CACHE_KEY_DATA);
+    if (cached) {
+      // Cache masih sah — pulangkan terus tanpa baca Sheet semula.
+      return ContentService.createTextOutput(cached).setMimeType(ContentService.MimeType.JSON);
+    }
+
     var sheet = getOrCreateSheet(SHEET_DATA);
     var data  = sheet.getDataRange().getValues();
     var list  = [];
+
     if (data.length > 1) {
       var headers = data[0];
+
       for (var i = 1; i < data.length; i++) {
         var row = data[i];
+
+        // Skip baris kosong
         if (!row[0] && !row[1]) continue;
-        var item = { scores: {} };
+
+        var item = { scores: {}, tarikhPenilaian: {} };
+
         for (var j = 0; j < headers.length; j++) {
           var key = String(headers[j]).trim();
           var val = row[j];
+
           if (key.indexOf("score_") === 0) {
+            // Skor CA dinamik
             item.scores[key.replace("score_", "")] = isNaN(Number(val)) ? 0 : Number(val);
+
+          } else if (key.indexOf("tarikh_") === 0) {
+            // Tarikh Penilaian per-CA dinamik (cth: tarikh_ca01, tarikh_ca04)
+            var tKey = key.replace("tarikh_", "");
+            item.tarikhPenilaian[tKey] = (val instanceof Date)
+              ? Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd")
+              : (val ? String(val).trim() : "");
+
+          } else if (key === "ic") {
+            // No. Kad Pengenalan — paksa 12 digit penuh (elak "0" hilang)
+            item[key] = padIC(val);
+
           } else if (key === "tarikhCA04") {
+            // WARISAN (sheet lama sebelum sistem tarikh per-CA) — kekalkan
+            // dibaca untuk keserasian, HTML akan migrate nilai ini secara
+            // automatik ke tarikhPenilaian bagi CA yang ditanda wajib.
             item[key] = (val instanceof Date)
               ? Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd")
               : (val ? String(val).trim() : "");
+
           } else if (key === "statusAktif") {
             var s = val ? String(val).trim().toUpperCase() : "";
             item[key] = (s === "BERHENTI" || s === "PINDAH") ? s : "AKTIF";
+
           } else if (key === "jumlah" || key === "peratus") {
             item[key] = isNaN(Number(val)) ? 0 : Number(val);
+
           } else {
-            item[key] = val !== undefined && val !== null ? String(val).trim() : "";
+            item[key] = (val !== undefined && val !== null) ? String(val).trim() : "";
           }
         }
+
+        // Pastikan id wujud
         if (!item.id) item.id = "row_" + i;
+
         list.push(item);
       }
     }
-    return corsOutput({
+
+    var hasil = {
       status   : "success",
       pelatih  : list,
       abilities: readAbilitiesConfig(),
       config   : readSettings(),
       programs : readPrograms(),
       jumlah   : list.length
-    });
-  } catch(err) {
+    };
+    var jsonStr = JSON.stringify(hasil);
+
+    try {
+      // CacheService ada had 100KB setiap kunci — jika data terlalu besar
+      // (institusi dengan sangat ramai pelatih), put() akan gagal senyap;
+      // kita abaikan sahaja (fallback: baca terus dari Sheet setiap kali).
+      cache.put(CACHE_KEY_DATA, jsonStr, CACHE_TTL_SECONDS);
+    } catch (cacheErr) {
+      // Data terlalu besar untuk cache — tiada masalah, teruskan tanpa cache.
+    }
+
+    return ContentService.createTextOutput(jsonStr).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
     return corsOutput({ status: "error", message: err.message });
   }
 }
 
-// ── POST: simpan pelatih + abilities + config + programs ──────
+// ================================================================
+// doPost — Terima data dari HTML dan simpan ke Sheets
+// Payload: { pelatih[], abilities[], config{}, programs[] }
+// ================================================================
 function doPost(e) {
+  // Kunci skrip — elak DUA push serentak (dua peranti simpan hampir
+  // serentak) saling menimpa data, sebab corak tulis di sini ialah
+  // "gantikan keseluruhan sheet". Tanpa kunci ni, push kedua yang
+  // sampai semasa push pertama masih memproses boleh hilangkan
+  // rekod yang push pertama baru masukkan.
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000); // tunggu maks 30 saat untuk kunci sebelum give-up
+  } catch (lockErr) {
+    return corsOutput({ status: "error", message: "Sistem sedang sibuk (push lain sedang berjalan). Sila cuba simpan semula sebentar lagi." });
+  }
+
   try {
     var payload = JSON.parse(e.postData.contents);
+
+    // Simpan config jika ada dalam payload
     if (payload.abilities) saveAbilitiesConfig(payload.abilities);
     if (payload.config)    saveSettings(payload.config);
     if (payload.programs)  savePrograms(payload.programs);
 
+    // Simpan data pelatih
     var pelatihList = payload.pelatih || [];
     var sheet = getOrCreateSheet(SHEET_DATA);
     sheet.clearContents();
+
     if (!Array.isArray(pelatihList) || pelatihList.length === 0) {
+      // Sheet kosong — tulis header sahaja
       sheet.appendRow(FIXED_HEADERS);
+      CacheService.getScriptCache().remove(CACHE_KEY_DATA);
       return corsOutput({ status: "success", saved: 0 });
     }
+
+    // Kumpul semua kunci score_ secara dinamik
     var scoreKeys = [];
     pelatihList.forEach(function(p) {
       Object.keys(p.scores || {}).forEach(function(k) {
         if (scoreKeys.indexOf(k) === -1) scoreKeys.push(k);
       });
     });
-    scoreKeys.sort();
-    var headers = FIXED_HEADERS.concat(scoreKeys.map(function(k){ return "score_" + k; }));
+    scoreKeys.sort(); // Susun mengikut abjad untuk konsistensi
+
+    // Kumpul semua kunci tarikh_ secara dinamik (tarikh penilaian per-CA)
+    var tarikhKeys = [];
+    pelatihList.forEach(function(p) {
+      Object.keys(p.tarikhPenilaian || {}).forEach(function(k) {
+        if (tarikhKeys.indexOf(k) === -1) tarikhKeys.push(k);
+      });
+    });
+    tarikhKeys.sort();
+
+    // Bina baris header penuh
+    var headers = FIXED_HEADERS
+      .concat(scoreKeys.map(function(k) { return "score_" + k; }))
+      .concat(tarikhKeys.map(function(k) { return "tarikh_" + k; }));
+
+    // Bina semua baris data (batch write — lebih laju dari appendRow)
     var rows = [headers];
     pelatihList.forEach(function(p) {
-      var row = [p.id||"",p.nama||"",p.angkaGiliran||"",p.ic||"",p.programId||"",
-                 p.tarikhCA04||"",p.statusAktif||"AKTIF",
-                 isNaN(Number(p.jumlah))?0:Number(p.jumlah),
-                 isNaN(Number(p.peratus))?0:Number(p.peratus),
-                 p.gred||"",p.keputusan||"",p.tenagaPengajar||""];
-      scoreKeys.forEach(function(k){
-        var sc = p.scores && p.scores[k] !== undefined ? Number(p.scores[k]) : 0;
+      var row = [
+        p.id            || "",
+        p.nama          || "",
+        p.angkaGiliran  || "",
+        padIC(p.ic),
+        p.programId     || "",
+        p.statusAktif   || "AKTIF",
+        isNaN(Number(p.jumlah))  ? 0 : Number(p.jumlah),
+        isNaN(Number(p.peratus)) ? 0 : Number(p.peratus),
+        p.gred          || "",
+        p.keputusan     || "",
+        p.tenagaPengajar|| ""
+      ];
+      scoreKeys.forEach(function(k) {
+        var sc = (p.scores && p.scores[k] !== undefined) ? Number(p.scores[k]) : 0;
         row.push(isNaN(sc) ? 0 : sc);
+      });
+      tarikhKeys.forEach(function(k) {
+        var t = (p.tarikhPenilaian && p.tarikhPenilaian[k]) ? String(p.tarikhPenilaian[k]).trim() : "";
+        row.push(t);
       });
       rows.push(row);
     });
+
+    // Paksa lajur IC jadi format "Plain Text" (@) SEBELUM tulis nilai.
+    // Tanpa ini, Google Sheets akan auto-kesan lajur IC sebagai Nombor
+    // dan buang "0" di depan — walaupun kita hantar sebagai teks.
+    var icColIndex = headers.indexOf("ic") + 1; // 1-based
+    if (icColIndex > 0) {
+      sheet.getRange(1, icColIndex, rows.length, 1).setNumberFormat("@");
+    }
+
+    // Sama juga untuk lajur tarikh_ dinamik — paksa "Plain Text" supaya
+    // Google Sheets TIDAK auto-tukar jadi objek Tarikh (yang boleh
+    // hanyut ikut zon waktu / format serantau bila dibaca semula).
+    tarikhKeys.forEach(function(k) {
+      var colIdx = headers.indexOf("tarikh_" + k) + 1;
+      if (colIdx > 0) {
+        sheet.getRange(1, colIdx, rows.length, 1).setNumberFormat("@");
+      }
+    });
+
+    // Tulis semua baris serentak (batch)
     sheet.getRange(1, 1, rows.length, headers.length).setValues(rows);
-    return corsOutput({ status:"success", saved: pelatihList.length });
-  } catch(err) {
-    return corsOutput({ status:"error", message: err.message });
+
+    // Batalkan cache lama — data baru kena terus keluar untuk semua
+    // peranti pada poll seterusnya, bukan tunggu cache luput sendiri.
+    CacheService.getScriptCache().remove(CACHE_KEY_DATA);
+
+    return corsOutput({
+      status  : "success",
+      saved   : pelatihList.length,
+      columns : headers.length
+    });
+
+  } catch (err) {
+    return corsOutput({ status: "error", message: err.message });
+  } finally {
+    lock.releaseLock();
   }
 }
 
-// ── Abilities (Sheet CA_Config) ───────────────────────────────
+// ================================================================
+// ABILITIES — Baca & Simpan (Sheet: CA_Config)
+// Header: [id, code, name, max, minPass]
+// ================================================================
 function readAbilitiesConfig() {
   try {
     var sh = getOrCreateSheet(SHEET_CONFIG);
     var d  = sh.getDataRange().getValues();
     if (d.length <= 1) return getDefaultAbilities();
+
+    // Kesan jika lajur ke-6 (wajibTarikh) wujud dalam sheet ini.
+    // Sheet LAMA (sebelum kemaskini ini) hanya ada 5 lajur.
+    var adaLajurWajibTarikh = d[0].length >= 6;
+
     var out = [];
     for (var i = 1; i < d.length; i++) {
       if (!d[i][0] && !d[i][1]) continue;
-      out.push({ id: String(d[i][0]).trim(), code: String(d[i][1]).trim(),
-                 name: String(d[i][2]).trim(),
-                 max: isNaN(Number(d[i][3])) ? 20 : Number(d[i][3]),
-                 minPass: isNaN(Number(d[i][4])) ? 12 : Number(d[i][4]) });
+      var wajibTarikh = adaLajurWajibTarikh
+        ? (String(d[i][5]).trim().toUpperCase() === "TRUE")
+        : false;
+      out.push({
+        id     : String(d[i][0]).trim(),
+        code   : String(d[i][1]).trim(),
+        name   : String(d[i][2]).trim(),
+        max    : isNaN(Number(d[i][3])) ? 20 : Number(d[i][3]),
+        minPass: isNaN(Number(d[i][4])) ? 12 : Number(d[i][4]),
+        wajibTarikh: wajibTarikh
+      });
     }
-    return out.length > 0 ? out : getDefaultAbilities();
-  } catch(e) { return getDefaultAbilities(); }
+
+    if (out.length === 0) return getDefaultAbilities();
+
+    // Sheet LAMA (tiada lajur wajibTarikh langsung) — kekalkan tingkah
+    // laku asal sistem sebelum kemaskini ini: CA TERAKHIR automatik
+    // wajib tarikh (sepadan borang lama), CA lain tidak.
+    if (!adaLajurWajibTarikh) {
+      out[out.length - 1].wajibTarikh = true;
+    }
+
+    return out;
+  } catch (e) {
+    return getDefaultAbilities();
+  }
 }
+
 function saveAbilitiesConfig(abilities) {
   var sh = getOrCreateSheet(SHEET_CONFIG);
   sh.clearContents();
-  var rows = [["id","code","name","max","minPass"]];
-  abilities.forEach(function(ab){
-    rows.push([ab.id||"",ab.code||"",ab.name||"",
-               isNaN(Number(ab.max))?20:Number(ab.max),
-               isNaN(Number(ab.minPass))?12:Number(ab.minPass)]);
+  var rows = [["id", "code", "name", "max", "minPass", "wajibTarikh"]];
+  abilities.forEach(function(ab) {
+    rows.push([
+      ab.id   || "",
+      ab.code || "",
+      ab.name || "",
+      isNaN(Number(ab.max))     ? 20 : Number(ab.max),
+      isNaN(Number(ab.minPass)) ? 12 : Number(ab.minPass),
+      ab.wajibTarikh ? "TRUE" : "FALSE"
+    ]);
   });
-  sh.getRange(1,1,rows.length,5).setValues(rows);
+  sh.getRange(1, 1, rows.length, 6).setValues(rows);
 }
+
+// Default abilities JPK jika CA_Config masih kosong
 function getDefaultAbilities() {
   return [
-    {id:"ca01",code:"CA01",name:"ASAS KOMUNIKASI PEKERJAAN",max:20,minPass:12},
-    {id:"ca02",code:"CA02",name:"KEMAHIRAN TINGKAH LAKU PERSONAL",max:20,minPass:12},
-    {id:"ca03",code:"CA03",name:"KESEDARAN ETIKA DI TEMPAT KERJA",max:20,minPass:12},
-    {id:"ca04",code:"CA04",name:"KESEDARAN, KESIHATAN, KESELAMATAN DAN ALAM SEKITAR",max:20,minPass:12}
+    { id:"ca01", code:"CA01", name:"ASAS KOMUNIKASI PEKERJAAN",                                   max:20, minPass:12, wajibTarikh:false },
+    { id:"ca02", code:"CA02", name:"KEMAHIRAN TINGKAH LAKU PERSONAL",                             max:20, minPass:12, wajibTarikh:false },
+    { id:"ca03", code:"CA03", name:"KESEDARAN ETIKA DI TEMPAT KERJA",                            max:20, minPass:12, wajibTarikh:false },
+    { id:"ca04", code:"CA04", name:"KESEDARAN, KESIHATAN, KESELAMATAN DAN ALAM SEKITAR",         max:20, minPass:12, wajibTarikh:true }
   ];
 }
 
-// ── Config umum (Sheet Settings) ─────────────────────────────
+// ================================================================
+// SETTINGS — Baca & Simpan (Sheet: Settings)
+// Format: setiap baris = [key, value]
+// ================================================================
 function readSettings() {
   try {
-    var sh = getOrCreateSheet(SHEET_SETTINGS);
-    var d  = sh.getDataRange().getValues();
+    var sh  = getOrCreateSheet(SHEET_SETTINGS);
+    var d   = sh.getDataRange().getValues();
     var cfg = {};
     for (var i = 0; i < d.length; i++) {
-      if (d[i][0]) cfg[String(d[i][0]).trim()] = d[i][1] !== undefined ? String(d[i][1]) : "";
+      if (d[i][0]) {
+        var key = String(d[i][0]).trim();
+        var raw = (d[i][1] !== undefined) ? String(d[i][1]) : "";
+        // Tukar balik teks "true"/"false" kepada boolean sebenar —
+        // PENTING supaya "!appConfig.isInputActive" di HTML tepat.
+        // Contoh bug jika tak ditukar: !"false" == false (teks "false"
+        // dianggap truthy oleh JavaScript walaupun makna sebenarnya negatif).
+        if (raw === "true")  { cfg[key] = true; }
+        else if (raw === "false") { cfg[key] = false; }
+        else { cfg[key] = raw; }
+      }
     }
     return Object.keys(cfg).length > 0 ? cfg : null;
-  } catch(e) { return null; }
+  } catch (e) {
+    return null;
+  }
 }
+
 function saveSettings(config) {
   var sh = getOrCreateSheet(SHEET_SETTINGS);
   sh.clearContents();
   var rows = [];
-  Object.keys(config).forEach(function(k){ rows.push([k, String(config[k]||"")]); });
-  if (rows.length > 0) sh.getRange(1,1,rows.length,2).setValues(rows);
+  Object.keys(config).forEach(function(k) {
+    var v = config[k];
+    // Tukar boolean secara EKSPLISIT ke "true"/"false" — jangan bergantung
+    // pada tabiat "false || ''' " = '' " yang cuma kebetulan berfungsi.
+    // Ini elak pepijat senyap jika tetapan boolean lain ditambah kelak.
+    var teks = (typeof v === "boolean") ? (v ? "true" : "false") : String(v || "");
+    rows.push([k, teks]);
+  });
+  if (rows.length > 0) sh.getRange(1, 1, rows.length, 2).setValues(rows);
 }
 
-// ── Senarai Program (Sheet Settings baris khusus) ─────────────
+// ================================================================
+// PROGRAMS — Baca & Simpan (Sheet: Programs)
+// Header: [id, code, name]
+// ================================================================
 function readPrograms() {
   try {
-    var sh = getOrCreateSheet("Programs");
+    var sh = getOrCreateSheet(SHEET_PROGRAMS);
     var d  = sh.getDataRange().getValues();
     if (d.length <= 1) return [];
     var out = [];
     for (var i = 1; i < d.length; i++) {
       if (!d[i][0]) continue;
-      out.push({ id: String(d[i][0]).trim(), code: String(d[i][1]).trim(), name: String(d[i][2]).trim() });
+      out.push({
+        id  : String(d[i][0]).trim(),
+        code: String(d[i][1]).trim(),
+        name: String(d[i][2]).trim()
+      });
     }
     return out;
-  } catch(e) { return []; }
+  } catch (e) {
+    return [];
+  }
 }
+
 function savePrograms(programs) {
-  var sh = getOrCreateSheet("Programs");
+  var sh = getOrCreateSheet(SHEET_PROGRAMS);
   sh.clearContents();
-  var rows = [["id","code","name"]];
-  programs.forEach(function(p){ rows.push([p.id||"",p.code||"",p.name||""]); });
-  sh.getRange(1,1,rows.length,3).setValues(rows);
-}</textarea>
+  var rows = [["id", "code", "name"]];
+  programs.forEach(function(p) {
+    rows.push([p.id || "", p.code || "", p.name || ""]);
+  });
+  sh.getRange(1, 1, rows.length, 3).setValues(rows);
+}
+</textarea>
             </div>
           </div>
         </div>
@@ -3449,6 +3795,13 @@ function savePrograms(programs) {
                       />
                     </div>
                   </div>
+
+                  <!-- Togol: Wajib Tarikh Penilaian untuk CA ini -->
+                  <label class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 cursor-pointer select-none">
+                    <input type="checkbox" x-model="ab.wajibTarikh" class="w-4 h-4 accent-rose-600 rounded">
+                    <span class="text-[10px] font-black text-rose-600 uppercase">Wajib Tarikh Penilaian untuk CA ini</span>
+                  </label>
+                  <p class="text-[9px] text-slate-400 mt-1" x-show="!ab.wajibTarikh">Medan tarikh disembunyikan pada borang jika tidak ditandakan.</p>
                 </div>
               </template>
             </div>
