@@ -96,7 +96,7 @@
     // ⚙️  TANAM URL GOOGLE APPS SCRIPT DI SINI
     //     Tukar kepada URL Web App anda selepas deploy GAS v3.0
     // ════════════════════════════════════════════════════════════════
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzOX16fOVVPYJjQDvbwx4RJpovgO8_Rt2ki3S72BeAzqdx8ieff4CHv3P6yS28s5s0d/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbw03vwlJSnO7UvMsgM1mcDU6O-7yYI9AjA9VLv5Lw7q3i73KJ61aAyokqFef6bJbPt7/exec";
     // Contoh: "https://script.google.com/macros/s/AKfycb.../exec"
     // ════════════════════════════════════════════════════════════════
 
@@ -112,10 +112,10 @@
           gayaTulisan: "sans",
           adminPassword: "admin123",
           abilities: [
-            { id: "ca01", code: "CA01", name: "ASAS KOMUNIKASI PEKERJAAN", max: 20, minPass: 12, wajibTarikh: false },
-            { id: "ca02", code: "CA02", name: "KEMAHIRAN TINGKAH LAKU PERSONAL", max: 20, minPass: 12, wajibTarikh: false },
-            { id: "ca03", code: "CA03", name: "KESEDARAN ETIKA DI TEMPAT KERJA", max: 20, minPass: 12, wajibTarikh: false },
-            { id: "ca04", code: "CA04", name: "KESEDARAN, KESIHATAN, KESELAMATAN DAN ALAM SEKITAR", max: 20, minPass: 12, wajibTarikh: true }
+            { id: "ca01", code: "CA01", name: "ASAS KOMUNIKASI PEKERJAAN", max: 20, minPass: 12, wajibTarikh: false, kunciSkor: false },
+            { id: "ca02", code: "CA02", name: "KEMAHIRAN TINGKAH LAKU PERSONAL", max: 20, minPass: 12, wajibTarikh: false, kunciSkor: false },
+            { id: "ca03", code: "CA03", name: "KESEDARAN ETIKA DI TEMPAT KERJA", max: 20, minPass: 12, wajibTarikh: false, kunciSkor: false },
+            { id: "ca04", code: "CA04", name: "KESEDARAN, KESIHATAN, KESELAMATAN DAN ALAM SEKITAR", max: 20, minPass: 12, wajibTarikh: true, kunciSkor: false }
           ],
           slipTajuk: "BORANG PENILAIAN PENGETAHUAN NCS - CORE ABILITIES",
           slipLabelTandatangan1: "TANDATANGAN TENAGA PENGAJAR",
@@ -586,10 +586,6 @@
             this.triggerNotice(`Wajib masukkan Tarikh Penilaian ${caWajibTarikhTiadaNilai.code}!`, "error"); return;
           }
 
-          const live = this.calculateLiveTotals();
-          const scoresToSave = {};
-          this.appConfig.abilities.forEach(ab => { scoresToSave[ab.id] = this.getModuleScore(ab); });
-
           const icBaharu = this.formatIC(this.formIc);
           // Cari rekod SEDIA ADA berdasarkan ID (mod edit) ATAU berdasarkan
           // No. Kad Pengenalan yang sama (walaupun guru tak pilih dari senarai).
@@ -597,6 +593,35 @@
           const existingById = this.editingId ? this.pelatihList.find(x => x.id === this.editingId) : null;
           const existingByIc = !existingById ? this.pelatihList.find(x => x.ic === icBaharu) : null;
           const existing     = existingById || existingByIc;
+
+          // Bina skor — CA yang DIKUNCI admin akan KEKALKAN nilai SEDIA ADA
+          // (bukan nilai borang), sebagai pertahanan lapisan kedua — input
+          // dah disekat di UI, tapi ini pastikan skor terkunci tak boleh
+          // berubah walau apa pun keadaan borang di sisi klien.
+          const scoresToSave = {};
+          this.appConfig.abilities.forEach(ab => {
+            if (ab.kunciSkor && existing) {
+              scoresToSave[ab.id] = existing.scores[ab.id] || 0;
+            } else {
+              scoresToSave[ab.id] = this.getModuleScore(ab);
+            }
+          });
+
+          // Kira semula jumlah/peratus/keputusan/gred berdasarkan SKOR
+          // YANG DILINDUNGI (scoresToSave) — bukan terus dari borang —
+          // supaya walaupun input CA terkunci "dipaksa" aktif semula
+          // secara manual (cth: devtools), jumlah keseluruhan yang
+          // disimpan tetap konsisten dengan nilai skor sebenar yang
+          // dibenarkan, bukan nilai borang yang mungkin dimanipulasi.
+          let sumSkorDilindungi = 0, sumMaxDilindungi = 0, laluDilindungi = true;
+          this.appConfig.abilities.forEach(ab => {
+            const s = scoresToSave[ab.id] || 0;
+            sumSkorDilindungi += s; sumMaxDilindungi += ab.max;
+            if (s < ab.minPass) laluDilindungi = false;
+          });
+          const peratusDilindungi = sumMaxDilindungi > 0 ? parseFloat(((sumSkorDilindungi / sumMaxDilindungi) * 100).toFixed(2)) : 0;
+          const keputusanDilindungi = laluDilindungi ? 'LULUS' : 'GAGAL';
+
           const record = {
             id: existing ? existing.id : `ID_${Date.now()}`,
             programId: this.selectedProgramId,
@@ -605,10 +630,10 @@
             ic: icBaharu,
             scores: scoresToSave,
             tarikhPenilaian: { ...this.formTarikhPenilaian },
-            jumlah: live.jumlah,
-            peratus: live.peratus,
-            keputusan: live.keputusan,
-            gred: live.gred,
+            jumlah: parseFloat(sumSkorDilindungi.toFixed(2)),
+            peratus: peratusDilindungi,
+            keputusan: keputusanDilindungi,
+            gred: this.getGred(peratusDilindungi, keputusanDilindungi),
             statusAktif: existing ? (existing.statusAktif || 'AKTIF') : 'AKTIF',
             tenagaPengajar: this.tenagaPengajar.toUpperCase().trim()
           };
@@ -1043,14 +1068,20 @@
               const programId   = matchedPrg ? matchedPrg.id : this.selectedProgramId;
               const scoresToSave = {}; let sumScores = 0, isLulus = true;
               const sumMaxDyn = this.appConfig.abilities.reduce((s, a) => s + (a.max || 0), 0);
+              const existIdxAwal = this.pelatihList.findIndex(p => p.ic === icCalon);
+              const rekodSediaAda = existIdxAwal !== -1 ? this.pelatihList[existIdxAwal] : null;
               this.appConfig.abilities.forEach((ab, idx) => {
-                const s = Math.min(Math.max(parseFloat(cols[4 + idx]) || 0, 0), ab.max);
+                // CA terkunci: kekalkan skor SEDIA ADA, abaikan lajur CSV
+                // (elak pengguna pintas kunci Admin melalui muat naik CSV).
+                const s = (ab.kunciSkor && rekodSediaAda)
+                  ? (rekodSediaAda.scores[ab.id] || 0)
+                  : Math.min(Math.max(parseFloat(cols[4 + idx]) || 0, 0), ab.max);
                 scoresToSave[ab.id] = s; sumScores += s;
                 if (s < ab.minPass) isLulus = false;
               });
               const pct    = sumMaxDyn > 0 ? parseFloat(((sumScores / sumMaxDyn) * 100).toFixed(2)) : 0;
               const status = isLulus ? "LULUS" : "GAGAL";
-              const existIdx = this.pelatihList.findIndex(p => p.ic === icCalon);
+              const existIdx = existIdxAwal;
               const record = {
                 id: existIdx !== -1 ? this.pelatihList[existIdx].id : `ID_CSV_${Date.now()}_${i}`,
                 programId, nama: namaCalon, angkaGiliran: cols[1] ? cols[1].toUpperCase() : '', ic: icCalon,
@@ -1296,7 +1327,7 @@
           const code = this.newAbilityCode.toUpperCase().trim();
           const idKey = code.toLowerCase().replace(/[^a-z0-9]/g, '');
           if (this.tempConfig.abilities.find(a => a.code === code)) { this.triggerNotice(`Kod ${code} sudah wujud!`, "error"); return; }
-          this.tempConfig.abilities.push({ id: idKey, code, name: this.newAbilityName.toUpperCase().trim(), max: parseInt(this.newAbilityMax) || 20, minPass: parseInt(this.newAbilityMinPass) || 12, wajibTarikh: false });
+          this.tempConfig.abilities.push({ id: idKey, code, name: this.newAbilityName.toUpperCase().trim(), max: parseInt(this.newAbilityMax) || 20, minPass: parseInt(this.newAbilityMinPass) || 12, wajibTarikh: false, kunciSkor: false });
           this.newAbilityCode = ''; this.newAbilityName = ''; this.newAbilityMax = 20; this.newAbilityMinPass = 12;
           this.triggerNotice(`${code} ditambah ke draf. Klik Simpan untuk mengesahkan.`);
         },
@@ -2314,6 +2345,11 @@
                     <div class="flex justify-between items-center mb-2">
                       <span class="text-[10px] font-black px-2 py-0.5 bg-slate-200 text-slate-800 rounded" x-text="ab.code"></span>
                       <span class="text-[10px] text-slate-400 font-bold truncate max-w-[150px]" :title="ab.name" x-text="ab.name"></span>
+                      <template x-if="ab.kunciSkor">
+                        <span class="text-[9px] font-black px-2 py-0.5 bg-rose-100 text-rose-600 rounded flex items-center gap-1" title="Skor CA ini dikunci oleh Admin">
+                          <i data-lucide="lock" class="w-2.5 h-2.5"></i> DIKUNCI
+                        </span>
+                      </template>
                     </div>
 
                     <!-- Input Nombor Berwajaran Terus Untuk Semua CA (Maksimum 20) -->
@@ -2325,8 +2361,8 @@
                         :max="ab.max"
                         step="any"
                         x-model="formScores[ab.id]"
-                        :disabled="!appConfig.isInputActive"
-                        :class="!appConfig.isInputActive ? 'bg-slate-100 cursor-not-allowed text-slate-400' : 'bg-white'"
+                        :disabled="!appConfig.isInputActive || ab.kunciSkor"
+                        :class="(!appConfig.isInputActive || ab.kunciSkor) ? 'bg-slate-100 cursor-not-allowed text-slate-400' : 'bg-white'"
                         class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 font-mono-custom"
                       />
                     </div>
@@ -3148,11 +3184,19 @@
             </ol>
 
             <div class="pt-2 border-t">
-              <label class="block text-[9px] font-bold text-slate-400 mb-1">KOD APPS SCRIPT v3.4 (SENTIASA DIKEMASKINI SECARA AUTOMATIK — jangan guna versi selain ini) — Salin & Tampal dalam Apps Script (klik untuk pilih semua):</label>
+              <label class="block text-[9px] font-bold text-slate-400 mb-1">KOD APPS SCRIPT v3.5 (SENTIASA DIKEMASKINI SECARA AUTOMATIK — jangan guna versi selain ini) — Salin & Tampal dalam Apps Script (klik untuk pilih semua):</label>
               <textarea readonly class="w-full h-64 p-2 bg-slate-900 text-emerald-400 font-mono-custom text-[9px] rounded border border-slate-700" 
                         onclick="this.select()"
 >// ================================================================
-// GAS v3.4 — Sistem Rekod Markah Core Abilities JPK
+// GAS v3.5 — Sistem Rekod Markah Core Abilities JPK
+// ----------------------------------------------------------------
+// KEMASKINI v3.5:
+//   • Admin kini boleh KUNCI/BUKA skor bagi setiap CA secara berasingan
+//     (lajur ke-7 "kunciSkor" dalam CA_Config, TRUE/FALSE). Bila
+//     dikunci, medan markah CA tersebut disekat (baca sahaja) pada
+//     borang kemasukan untuk SEMUA pengguna (kecuali Admin CSV pukal).
+//   • Sheet lama (tiada lajur ke-7) automatik anggap kunciSkor = FALSE
+//     untuk semua CA (tiada CA dikunci secara default).
 // ----------------------------------------------------------------
 // KEMASKINI v3.4:
 //   • Tarikh Penilaian kini PER-CA (bukan satu tarikh sejagat untuk
@@ -3193,7 +3237,7 @@
 //
 // STRUKTUR SHEETS:
 //   Data       — rekod pelatih (header auto-jana oleh sistem)
-//   CA_Config  — konfigurasi Core Abilities [id, code, name, max, minPass, wajibTarikh]
+//   CA_Config  — konfigurasi Core Abilities [id, code, name, max, minPass, wajibTarikh, kunciSkor]
 //   Settings   — tetapan sistem [key, value]
 //   Programs   — senarai program [id, code, name]
 //
@@ -3488,9 +3532,10 @@ function readAbilitiesConfig() {
     var d  = sh.getDataRange().getValues();
     if (d.length <= 1) return getDefaultAbilities();
 
-    // Kesan jika lajur ke-6 (wajibTarikh) wujud dalam sheet ini.
-    // Sheet LAMA (sebelum kemaskini ini) hanya ada 5 lajur.
+    // Kesan jika lajur ke-6 (wajibTarikh) / ke-7 (kunciSkor) wujud.
+    // Sheet LAMA (sebelum kemaskini) hanya ada 5 lajur.
     var adaLajurWajibTarikh = d[0].length >= 6;
+    var adaLajurKunciSkor   = d[0].length >= 7;
 
     var out = [];
     for (var i = 1; i < d.length; i++) {
@@ -3498,13 +3543,17 @@ function readAbilitiesConfig() {
       var wajibTarikh = adaLajurWajibTarikh
         ? (String(d[i][5]).trim().toUpperCase() === "TRUE")
         : false;
+      var kunciSkor = adaLajurKunciSkor
+        ? (String(d[i][6]).trim().toUpperCase() === "TRUE")
+        : false;
       out.push({
         id     : String(d[i][0]).trim(),
         code   : String(d[i][1]).trim(),
         name   : String(d[i][2]).trim(),
         max    : isNaN(Number(d[i][3])) ? 20 : Number(d[i][3]),
         minPass: isNaN(Number(d[i][4])) ? 12 : Number(d[i][4]),
-        wajibTarikh: wajibTarikh
+        wajibTarikh: wajibTarikh,
+        kunciSkor: kunciSkor
       });
     }
 
@@ -3526,7 +3575,7 @@ function readAbilitiesConfig() {
 function saveAbilitiesConfig(abilities) {
   var sh = getOrCreateSheet(SHEET_CONFIG);
   sh.clearContents();
-  var rows = [["id", "code", "name", "max", "minPass", "wajibTarikh"]];
+  var rows = [["id", "code", "name", "max", "minPass", "wajibTarikh", "kunciSkor"]];
   abilities.forEach(function(ab) {
     rows.push([
       ab.id   || "",
@@ -3534,19 +3583,20 @@ function saveAbilitiesConfig(abilities) {
       ab.name || "",
       isNaN(Number(ab.max))     ? 20 : Number(ab.max),
       isNaN(Number(ab.minPass)) ? 12 : Number(ab.minPass),
-      ab.wajibTarikh ? "TRUE" : "FALSE"
+      ab.wajibTarikh ? "TRUE" : "FALSE",
+      ab.kunciSkor   ? "TRUE" : "FALSE"
     ]);
   });
-  sh.getRange(1, 1, rows.length, 6).setValues(rows);
+  sh.getRange(1, 1, rows.length, 7).setValues(rows);
 }
 
 // Default abilities JPK jika CA_Config masih kosong
 function getDefaultAbilities() {
   return [
-    { id:"ca01", code:"CA01", name:"ASAS KOMUNIKASI PEKERJAAN",                                   max:20, minPass:12, wajibTarikh:false },
-    { id:"ca02", code:"CA02", name:"KEMAHIRAN TINGKAH LAKU PERSONAL",                             max:20, minPass:12, wajibTarikh:false },
-    { id:"ca03", code:"CA03", name:"KESEDARAN ETIKA DI TEMPAT KERJA",                            max:20, minPass:12, wajibTarikh:false },
-    { id:"ca04", code:"CA04", name:"KESEDARAN, KESIHATAN, KESELAMATAN DAN ALAM SEKITAR",         max:20, minPass:12, wajibTarikh:true }
+    { id:"ca01", code:"CA01", name:"ASAS KOMUNIKASI PEKERJAAN",                                   max:20, minPass:12, wajibTarikh:false, kunciSkor:false },
+    { id:"ca02", code:"CA02", name:"KEMAHIRAN TINGKAH LAKU PERSONAL",                             max:20, minPass:12, wajibTarikh:false, kunciSkor:false },
+    { id:"ca03", code:"CA03", name:"KESEDARAN ETIKA DI TEMPAT KERJA",                            max:20, minPass:12, wajibTarikh:false, kunciSkor:false },
+    { id:"ca04", code:"CA04", name:"KESEDARAN, KESIHATAN, KESELAMATAN DAN ALAM SEKITAR",         max:20, minPass:12, wajibTarikh:true,  kunciSkor:false }
   ];
 }
 
@@ -3937,6 +3987,15 @@ function savePrograms(programs) {
                     <span class="text-[10px] font-black text-rose-600 uppercase">Wajib Tarikh Penilaian untuk CA ini</span>
                   </label>
                   <p class="text-[9px] text-slate-400 mt-1" x-show="!ab.wajibTarikh">Medan tarikh disembunyikan pada borang jika tidak ditandakan.</p>
+
+                  <!-- Togol: Kunci/Buka Skor untuk CA ini -->
+                  <label class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-200 cursor-pointer select-none">
+                    <input type="checkbox" x-model="ab.kunciSkor" class="w-4 h-4 accent-orange-600 rounded">
+                    <span class="text-[10px] font-black text-orange-600 uppercase flex items-center gap-1">
+                      <i data-lucide="lock" class="w-3 h-3"></i> Kunci Skor CA ini (pengguna tak boleh ubah)
+                    </span>
+                  </label>
+                  <p class="text-[9px] text-slate-400 mt-1" x-show="ab.kunciSkor">Medan markah CA ini akan DISEKAT (baca sahaja) pada borang kemasukan untuk semua pengguna — nilai sedia ada dikekalkan.</p>
                 </div>
               </template>
             </div>
