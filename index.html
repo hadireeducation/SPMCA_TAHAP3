@@ -96,7 +96,7 @@
     // ⚙️  TANAM URL GOOGLE APPS SCRIPT DI SINI
     //     Tukar kepada URL Web App anda selepas deploy GAS v3.0
     // ════════════════════════════════════════════════════════════════
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzOX16fOVVPYJjQDvbwx4RJpovgO8_Rt2ki3S72BeAzqdx8ieff4CHv3P6yS28s5s0d/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzhCIkI56VXPqLuIg561Ns7avlibZg5hE-DsTuK5Jqo70fW6ysBSeP_qWv8OXHHlDhHDw/exec";
     // Contoh: "https://script.google.com/macros/s/AKfycb.../exec"
     // ════════════════════════════════════════════════════════════════
 
@@ -218,6 +218,12 @@
         notification: false,
         notificationText: '',
         notificationType: 'success',
+        notificationUndoAction: null,
+        // Tindakan pukal TERAKHIR yang boleh diundur (cth: Reset Prestasi).
+        // Kekal dalam ingatan (bukan toast sementara sahaja) supaya admin
+        // masih boleh undo walaupun terlepas notis 8 saat tadi. Ditimpa
+        // oleh tindakan boleh-undo yang lebih baharu, atau selepas diundur.
+        lastUndoAction: null,
         showConfirmModal: false,
         confirmModalTitle: '',
         confirmModalMessage: '',
@@ -466,11 +472,28 @@
           localStorage.setItem('ca_instructor_html', this.tenagaPengajar);
         },
 
-        triggerNotice(msg, type = 'success') {
+        triggerNotice(msg, type = 'success', undoAction = null) {
           this.notificationText = msg;
           this.notificationType = type;
+          this.notificationUndoAction = undoAction;
           this.notification = true;
-          setTimeout(() => this.notification = false, 4000);
+          // Bagi lebih masa (8 saat) kalau ada tindakan Undo, supaya
+          // sempat pengguna tekan sebelum notis hilang.
+          setTimeout(() => this.notification = false, undoAction ? 8000 : 4000);
+        },
+
+        // Jalankan Undo dari notis toast (masih dalam tempoh 8 saat)
+        async executeUndoDariToast() {
+          if (this.notificationUndoAction) await this.notificationUndoAction();
+          this.notification = false;
+        },
+
+        // Jalankan Undo dari panel kekal (walaupun toast dah hilang)
+        async executeUndoKekal() {
+          if (this.lastUndoAction && this.lastUndoAction.restore) {
+            await this.lastUndoAction.restore();
+            this.lastUndoAction = null;
+          }
         },
 
         getGred(peratus, keputusan) {
@@ -845,6 +868,64 @@
             this.triggerNotice("Rekod dipadam. Mengemas kini Google Sheets...");
             const ok = await this._pushToGAS();
             if (ok) this.triggerNotice("Rekod berjaya dipadam dari Google Sheets ✓", "success");
+          };
+          this.showConfirmModal = true;
+          this.refreshIcons();
+        },
+
+        // Reset PRESTASI sahaja bagi seorang Tenaga Pengajar — KOSONGKAN
+        // medan tenagaPengajar pada semua rekod pelatih yang berkaitan
+        // (nama itu akan hilang dari laporan/statistik prestasi), TANPA
+        // memadam sebarang rekod pelatih (markah, status, dsb kekal utuh).
+        resetPrestasiTenagaPengajar(namaTP) {
+          const namaSasaran = (namaTP || '').trim().toUpperCase();
+          // Snapshot nilai ASAL (id + tenagaPengajar sedia ada) SEBELUM
+          // reset — ini yang membolehkan fungsi Undo pulihkan semula.
+          const snapshot = this.pelatihList
+            .filter(p => (p.tenagaPengajar || '').trim().toUpperCase() === namaSasaran)
+            .map(p => ({ id: p.id, tenagaPengajarLama: p.tenagaPengajar }));
+          const bilanganTerjejas = snapshot.length;
+
+          this.confirmModalTitle = "RESET PRESTASI TENAGA PENGAJAR";
+          this.confirmModalMessage = `Adakah anda pasti mahu reset prestasi untuk "${namaTP}"? Medan Tenaga Pengajar akan DIKOSONGKAN pada ${bilanganTerjejas} rekod pelatih berkaitan — markah, status dan maklumat pelatih TIDAK dipadam, cuma pautan kepada nama tenaga pengajar ini dibuang. "${namaTP}" akan hilang dari laporan prestasi. (Tindakan ini boleh di-UNDO selepas ini.)`;
+          this.confirmAction = async () => {
+            this.pelatihList = this.pelatihList.map(p => {
+              if ((p.tenagaPengajar || '').trim().toUpperCase() === namaSasaran) {
+                return { ...p, tenagaPengajar: '' };
+              }
+              return p;
+            });
+            this.triggerNotice(`Prestasi "${namaTP}" direset (${bilanganTerjejas} rekod). Mengemas kini Google Sheets...`);
+            const ok = await this._pushToGAS();
+            if (ok) {
+              this.addActivityLog("BERJAYA", `Reset prestasi tenaga pengajar "${namaTP}" (${bilanganTerjejas} rekod dikemaskini)`);
+
+              // Bina fungsi PULIH — kembalikan nilai tenagaPengajar asal
+              // ikut snapshot tadi, kemudian push semula ke Google Sheets.
+              const pulihkan = async () => {
+                this.pelatihList = this.pelatihList.map(p => {
+                  const asal = snapshot.find(s => s.id === p.id);
+                  return asal ? { ...p, tenagaPengajar: asal.tenagaPengajarLama } : p;
+                });
+                this.triggerNotice(`Membatalkan reset "${namaTP}"... Mengemas kini Google Sheets...`);
+                const okUndo = await this._pushToGAS();
+                if (okUndo) {
+                  this.triggerNotice(`Reset prestasi "${namaTP}" berjaya DIBATALKAN ✓`, "success");
+                  this.addActivityLog("BERJAYA", `Undo — reset prestasi "${namaTP}" dibatalkan (${bilanganTerjejas} rekod dipulihkan)`);
+                }
+                this.lastUndoAction = null;
+              };
+
+              // Simpan sebagai tindakan boleh-undo (panel kekal + toast).
+              this.lastUndoAction = {
+                label: `Reset Prestasi "${namaTP}" (${bilanganTerjejas} rekod)`,
+                timestamp: new Date().toLocaleString('ms-MY', { hour12: false }),
+                restore: pulihkan
+              };
+
+              this.triggerNotice(`Prestasi "${namaTP}" berjaya direset ✓`, "success", pulihkan);
+              this.refreshIcons();
+            }
           };
           this.showConfirmModal = true;
           this.refreshIcons();
@@ -1402,6 +1483,38 @@
         <i data-lucide="check-circle" class="w-5 h-5"></i>
       </template>
       <span x-text="notificationText"></span>
+      <button 
+        x-show="notificationUndoAction"
+        @click="executeUndoDariToast()"
+        class="ml-2 px-2.5 py-1 text-[11px] font-black uppercase bg-white/20 hover:bg-white/30 rounded-lg border border-white/40 whitespace-nowrap"
+      >
+        Undo
+      </button>
+    </div>
+  </div>
+
+  <!-- PANEL KEKAL UNDO — kekal papar walaupun toast dah hilang, supaya
+       admin masih boleh batalkan tindakan pukal terakhir bila-bila masa -->
+  <div 
+    class="fixed bottom-6 left-6 z-50 no-print"
+    x-show="lastUndoAction"
+    x-transition
+  >
+    <div class="flex items-center gap-3 bg-slate-800 text-white px-4 py-3 rounded-xl shadow-2xl max-w-sm">
+      <i data-lucide="rotate-ccw" class="w-4 h-4 text-amber-400 flex-shrink-0"></i>
+      <div class="text-xs">
+        <p class="font-bold text-slate-200" x-text="lastUndoAction ? lastUndoAction.label : ''"></p>
+        <p class="text-slate-400 text-[10px]" x-text="lastUndoAction ? lastUndoAction.timestamp : ''"></p>
+      </div>
+      <button 
+        @click="executeUndoKekal()"
+        class="px-3 py-1.5 text-[11px] font-black uppercase bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg whitespace-nowrap flex-shrink-0"
+      >
+        Undo
+      </button>
+      <button @click="lastUndoAction = null" class="text-slate-400 hover:text-white flex-shrink-0" title="Tutup (tanpa undo)">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
     </div>
   </div>
 
@@ -2740,12 +2853,13 @@
                 <th class="py-2.5 px-4 text-center">Jumlah Pelatih</th>
                 <th class="py-2.5 px-4 text-center">Kompeten (Lulus)</th>
                 <th class="py-2.5 px-4 text-center">Kadar Kelulusan PP</th>
+                <th class="py-2.5 px-4 text-center" x-show="isAdminUnlocked">Tindakan</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-200 font-medium text-slate-700">
               <template x-if="getInstructorsList().length === 0">
                 <tr>
-                  <td colspan="6" class="py-8 text-center text-slate-400 italic font-bold">
+                  <td :colspan="isAdminUnlocked ? 7 : 6" class="py-8 text-center text-slate-400 italic font-bold">
                     Tiada sebarang maklumat tenaga pengajar unik ditemui dalam rekod calon.
                   </td>
                 </tr>
@@ -2768,6 +2882,15 @@
                         ></div>
                       </div>
                     </div>
+                  </td>
+                  <td class="py-3 px-4 text-center" x-show="isAdminUnlocked">
+                    <button 
+                      @click="resetPrestasiTenagaPengajar(inst.nama)" 
+                      class="px-2.5 py-1 text-[10px] font-black text-red-600 border border-red-300 hover:bg-red-50 rounded-lg uppercase"
+                      title="Kosongkan pautan tenaga pengajar ini dari semua rekod pelatih (rekod pelatih TIDAK dipadam)"
+                    >
+                      Reset Prestasi
+                    </button>
                   </td>
                 </tr>
               </template>
