@@ -271,6 +271,9 @@
             this.loadingMsg    = 'URL Apps Script belum dikonfigurasi.';
             this.syncError     = true;
             this.isLoading     = false;
+            if (this.programsList.length > 0 && !this.programsList.some(prg => prg.id === this.selectedProgramId)) {
+              this.selectedProgramId = this.programsList[0].id;
+            }
             this.tempConfig    = JSON.parse(JSON.stringify(this.appConfig));
             this.tempPrograms  = JSON.parse(JSON.stringify(this.programsList));
             this.tenagaPengajar = localStorage.getItem('ca_instructor_html') || '';
@@ -324,6 +327,17 @@
             this.programsList = defaultPrograms;
             this.pelatihList = JSON.parse(JSON.stringify(this.REAL_SAMPLES_PELATIH));
             this.triggerNotice(`Gagal menghubungi Google Sheets: ${err.message}. Data contoh dipaparkan.`, 'error');
+          }
+
+          // ── Pastikan program terpilih SAH mengikut data sebenar ──
+          // Elak kiraan "Senarai Markah (0)" berterusan pada akses
+          // pertama sistem — jika selectedProgramId semasa (cth: nilai
+          // lalai 'prg1') tiada dalam senarai program yang dimuat
+          // (Sheets sebenar mungkin guna ID lain), tukar automatik ke
+          // program pertama yang wujud supaya bilangan pelajar terus
+          // dipaparkan dengan tepat tanpa perlu pilih manual.
+          if (this.programsList.length > 0 && !this.programsList.some(prg => prg.id === this.selectedProgramId)) {
+            this.selectedProgramId = this.programsList[0].id;
           }
 
           this.tempConfig   = JSON.parse(JSON.stringify(this.appConfig));
@@ -681,6 +695,17 @@
         // (tiada label kod CA seperti "CA01"/"CA04" ditulis). Jika CA
         // wajib berkongsi tarikh sama, papar sekali sahaja; jika berbeza,
         // senaraikan tarikh unik dipisah simbol " / ".
+        // Nilai "KEPUTUSAN" (peratus) seperti dipaparkan pada slip cetak —
+        // formula khas (jumlah ÷ jumlah maksimum × 30), BUKAN peratus
+        // markah sebenar (×100). Dikongsi supaya slip, jadual cetak, dan
+        // CSV/Excel semuanya papar nilai yang SAMA & konsisten.
+        getKeputusanSlip(p) {
+          if (!p || !this.appConfig?.abilities) return 0;
+          const jumlahMax = this.appConfig.abilities.reduce((s, a) => s + (a.max || 0), 0);
+          if (jumlahMax === 0) return 0;
+          return ((Math.round(p.jumlah || 0) / jumlahMax) * 30);
+        },
+
         getTarikhPenilaianSlipText(p) {
           if (!p || !this.appConfig?.abilities) return '____________________';
           const t = this._muatTarikhPenilaian(p);
@@ -1289,11 +1314,12 @@
         handleExportCSV() {
           if (this.pelatihList.length === 0) { this.triggerNotice("Tiada data!", "error"); return; }
           const hdrs = this.appConfig.abilities.map(a => `${a.code}_SKOR`).join(",");
-          let csv = `BIL,NAMA CALON,NO ANGKA GILIRAN,NO KAD PENGENALAN,KOD PROGRAM,${hdrs},JUMLAH,PERATUS,KEPUTUSAN,KEPUTUSAN_KOMPETENSI,TENAGA_PENGAJAR\n`;
+          let csv = `BIL,NAMA CALON,NO ANGKA GILIRAN,NO KAD PENGENALAN,KOD PROGRAM,${hdrs},JUMLAH,KEPUTUSAN,PERATUS,KEPUTUSAN_KOMPETENSI,TENAGA_PENGAJAR\n`;
           this.getFilteredList().forEach((p, idx) => {
             const scores = this.appConfig.abilities.map(ab => (p.scores[ab.id] || 0).toFixed(0)).join(",");
+            const keputusanGabung = `"${p.keputusan} (${this.getKeputusanSlip(p).toFixed(0)}%)"`;
             csv += [idx+1, `"${p.nama}"`, `"${p.angkaGiliran||''}"`, `'${p.ic}`, `"${this.getProgramCode(p.programId)}"`,
-                    scores, p.jumlah.toFixed(0), `${p.peratus.toFixed(0)}%`, p.keputusan, p.gred, `"${p.tenagaPengajar||'N/A'}"`].join(",") + "\n";
+                    scores, p.jumlah.toFixed(0), keputusanGabung, `${p.peratus.toFixed(0)}%`, p.gred, `"${p.tenagaPengajar||'N/A'}"`].join(",") + "\n";
           });
           this._downloadBlob(csv, "REKOD_CORE_ABILITIES_EKSPORT.csv");
           this.triggerNotice("Laporan markah berjaya dimuat turun!");
@@ -1721,7 +1747,7 @@
                   </tr>
                   <tr class="font-extrabold text-center">
                     <td colspan="3" class="p-2.5 border-r-2 border-black bg-gray-50 uppercase text-black">KEPUTUSAN</td>
-                    <td colspan="3" class="p-2.5 font-mono-custom text-black bg-white" x-text="`${appConfig.abilities ? ((Math.round(selectedPelatihForSlip.jumlah || 0) / appConfig.abilities.reduce((s,a)=>s+(a.max||0),0)) * 30).toFixed(0) : 0}%`"></td>
+                    <td colspan="3" class="p-2.5 font-mono-custom text-black bg-white" x-text="`${getKeputusanSlip(selectedPelatihForSlip).toFixed(0)}%`"></td>
                   </tr>
                 </tbody>
               </table>
@@ -1834,7 +1860,7 @@
             </tr>
             <tr class="font-extrabold text-center">
               <td colspan="3" class="p-2.5 border-r-2 border-black bg-gray-50 uppercase text-black">KEPUTUSAN</td>
-              <td colspan="3" class="p-2.5 font-mono-custom text-black bg-white" x-text="`${appConfig.abilities ? ((Math.round(selectedPelatihForSlip.jumlah || 0) / appConfig.abilities.reduce((s,a)=>s+(a.max||0),0)) * 30).toFixed(0) : 0}%`"></td>
+              <td colspan="3" class="p-2.5 font-mono-custom text-black bg-white" x-text="`${getKeputusanSlip(selectedPelatihForSlip).toFixed(0)}%`"></td>
             </tr>
           </tbody>
         </table>
@@ -1861,7 +1887,7 @@
           <thead>
             <!-- Aras 1: Banner Penyelarasan Penuh -->
             <tr class="bg-slate-100 text-slate-900 text-[10px] uppercase font-bold">
-              <th :colspan="appConfig.abilities ? appConfig.abilities.length + 9 : 14" class="py-2 px-4 text-center bg-slate-100 font-extrabold">
+              <th :colspan="appConfig.abilities ? appConfig.abilities.length + 10 : 15" class="py-2 px-4 text-center bg-slate-100 font-extrabold">
                 RUMUSAN REKOD MARKAH CORE ABILITIES <span x-text="appConfig.tahap.toUpperCase()"></span>, <span x-text="appConfig.pusatBertauliah"></span>. KOHORT <span x-text="appConfig.kohort"></span>
               </th>
             </tr>
@@ -1910,7 +1936,10 @@
                   </td>
                 </template>
                 <td class="py-2 px-2 text-center font-bold font-mono-custom" x-text="p.jumlah.toFixed(0)"></td>
-                <td class="py-2 px-2 text-center font-bold" x-text="p.keputusan"></td>
+                <td class="py-2 px-2 text-center font-bold">
+                  <div x-text="p.keputusan"></div>
+                  <div class="text-[8px] text-slate-500 font-bold font-mono-custom" x-text="`(${getKeputusanSlip(p).toFixed(0)}%)`"></div>
+                </td>
                 <td class="py-2 px-2 text-center font-bold font-mono-custom" x-text="`${p.peratus.toFixed(0)}%`"></td>
                 <td class="py-2 px-2 text-center text-[9px] font-bold" x-text="p.gred"></td>
               </tr>
@@ -2750,6 +2779,9 @@
                       class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border" 
                       x-text="p.keputusan"
                     ></span>
+                    <template x-if="p.keputusan !== 'BELUM DINILAI'">
+                      <div class="text-[9px] text-slate-500 font-bold font-mono-custom mt-1" x-text="`(${getKeputusanSlip(p).toFixed(0)}%)`"></div>
+                    </template>
                   </td>
 
                   <!-- Peratus % - di bawah kappa -->
